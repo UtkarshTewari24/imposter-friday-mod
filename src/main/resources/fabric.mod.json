@@ -1,0 +1,39 @@
+{
+	"schemaVersion": 1,
+	"id": "impostorfridays",
+	"version": "${version}",
+	"name": "Impostor Fridays",
+	"description": "An Among Us-style social deduction game mode for Minecraft, where Minecraft itself is the game board.",
+	"authors": [
+		"MrBoombox840",
+		"SpeedTellyYT"
+	],
+	"contact": {},
+	"license": "MIT",
+	"icon": "assets/impostorfridays/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.impostorfridays.ImpostorFridays"
+		],
+		"client": [
+			"com.impostorfridays.client.ImpostorFridaysClient"
+		]
+	},
+	"mixins": [
+		"impostorfridays.mixins.json",
+		{
+			"config": "impostorfridays.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=${loader_version}",
+		"minecraft": "~${minecraft_version}",
+		"java": ">=21",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"voicechat": "*"
+	}
+}
