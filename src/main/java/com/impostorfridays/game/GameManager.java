@@ -4,6 +4,7 @@ import com.impostorfridays.ImpostorFridays;
 import com.impostorfridays.config.GameConfig;
 import com.impostorfridays.net.GameSyncS2C;
 import com.impostorfridays.net.RoleAnnounceS2C;
+import com.impostorfridays.task.TaskManager;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -84,6 +85,7 @@ public final class GameManager {
 		assignRoles(players, cfg);
 
 		TrackingManager.clear();
+		TaskManager.start(server);
 
 		// Announce each player's own role, and nobody else's.
 		for (ServerPlayerEntity p : players) {
@@ -138,6 +140,7 @@ public final class GameManager {
 		}
 
 		TrackingManager.clear();
+		TaskManager.end();
 
 		state = null;
 		taskText = "";

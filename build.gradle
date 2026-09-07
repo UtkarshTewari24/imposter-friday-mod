@@ -43,6 +43,9 @@ dependencies {
 	testImplementation platform('org.junit:junit-bom:5.11.4')
 	testImplementation 'org.junit.jupiter:junit-jupiter'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	// Boots the Fabric loader inside JUnit so tests can touch Minecraft registries
+	// (Items, Bootstrap). Without it, registry init fails with IllegalAccessError.
+	testImplementation "net.fabricmc:fabric-loader-junit:${project.loader_version}"
 }
 
 processResources {
