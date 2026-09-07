@@ -3,8 +3,11 @@ package com.impostorfridays.client;
 import com.impostorfridays.ImpostorFridays;
 import com.impostorfridays.client.hud.GameHud;
 import com.impostorfridays.client.hud.RoleAnnouncementHud;
+import com.impostorfridays.client.screen.PlayerPickerScreen;
 import com.impostorfridays.game.Role;
 import com.impostorfridays.net.GameSyncS2C;
+import com.impostorfridays.net.OpenPickerS2C;
+import com.impostorfridays.net.PickerMode;
 import com.impostorfridays.net.RoleAnnounceS2C;
 import com.impostorfridays.net.SniffedS2C;
 import net.fabricmc.api.ClientModInitializer;
@@ -28,6 +31,10 @@ public class ImpostorFridaysClient implements ClientModInitializer {
 
 		ClientPlayNetworking.registerGlobalReceiver(SniffedS2C.ID, (payload, context) ->
 				context.client().execute(SniffCue::trigger));
+
+		ClientPlayNetworking.registerGlobalReceiver(OpenPickerS2C.ID, (payload, context) ->
+				context.client().execute(() -> context.client().setScreen(
+						new PlayerPickerScreen(PickerMode.byOrdinal(payload.mode()), payload.entries()))));
 
 		// Never let stale overlays survive a disconnect.
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> ClientGameState.reset());

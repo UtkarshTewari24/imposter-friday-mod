@@ -83,9 +83,14 @@ public final class GameManager {
 
 		assignRoles(players, cfg);
 
+		TrackingManager.clear();
+
 		// Announce each player's own role, and nobody else's.
 		for (ServerPlayerEntity p : players) {
 			Role role = state.getRole(p.getUuid());
+			if (role == Role.IMPOSTOR) {
+				TrackingManager.giveCompass(p);
+			}
 			ServerPlayNetworking.send(p, new RoleAnnounceS2C(role.ordinal()));
 			syncTo(p);
 		}
@@ -130,6 +135,8 @@ public final class GameManager {
 		for (ServerPlayerEntity p : server.getPlayerManager().getPlayerList()) {
 			clearPlayerEffects(p);
 		}
+
+		TrackingManager.clear();
 
 		state = null;
 		taskText = "";
