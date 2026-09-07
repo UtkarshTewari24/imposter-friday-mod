@@ -63,12 +63,26 @@ The third argument to `rotationYXZ` is **roll**. The flip overrides it from `0` 
 derived basis vectors must then be recomputed — skipping that leaves movement and projection out of
 sync with what is drawn.
 
-### MixinAudit
+### MixinAudit, and why dev-only testing is not enough
 Mixins apply lazily, when their target class is first loaded. `DeathScreen` and `Camera` are not
 loaded during a normal startup, so a broken injection would stay invisible until someone actually
-died or `/gravity` fired mid-session. `MixinAudit` force-loads every mixin target at boot **in the
-dev environment only**, turning that into an immediate, obvious log failure. All four mixins are
-confirmed applying at runtime.
+died or `/gravity` fired mid-session. `MixinAudit` force-loads every mixin target at boot, turning
+that into an immediate, obvious log failure. It runs automatically in dev, and can be enabled on a
+real server with `-Dimpostorfridays.mixinAudit=true`.
+
+**The dev environment and a real server do not run the same class names.** Dev uses named (Yarn)
+mappings; a built jar is remapped to intermediary, so at runtime on a real server
+`DamageTracker` is actually `net.minecraft.class_1283`. The first version of this audit used
+`Class.forName("net.minecraft.entity.damage.DamageTracker")`, which passed in dev and then threw
+`ClassNotFoundException` on a production server — reporting a mixin failure that did not exist.
+
+The fix is that targets are **class literals behind suppliers**, not name strings: Loom rewrites
+class literals to the correct intermediary name at build time, but it cannot rewrite the contents
+of a string. The suppliers keep resolution inside the try block rather than during the audit
+class's own initialisation.
+
+This was only caught by running the packaged jar on a genuine standalone Fabric server, which is
+worth doing after any Minecraft or Fabric update.
 
 ---
 
@@ -165,6 +179,10 @@ loss in the gap between rounds.
 - End-to-end console test: `/amongussetup` renders and mutates, `save` writes correct values to
   disk, `/start` refuses below 2 players, `/end` no-ops safely, `/amongusreset` warns
 - The Tracking Compass model resolves with no missing-model or missing-texture errors
+- **The packaged jar was tested on a real standalone Fabric server** (official 1.21.11 server
+  launcher + Fabric API 0.141.6, no dev environment): it boots cleanly, and both server-side mixin
+  targets load correctly under intermediary mappings
+- The mod loads and runs correctly with Simple Voice Chat **absent**, confirming the soft dependency
 
 **NOT verified — needs real players.** See [MANUAL_TEST_CHECKLIST.md](MANUAL_TEST_CHECKLIST.md).
 Nothing involving two or more simultaneous human players has been exercised: role assignment in a

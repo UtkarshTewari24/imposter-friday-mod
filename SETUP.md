@@ -182,3 +182,15 @@ files.
 | Crash only on Lunar Client | Use Lunar's **Vanilla Addon** module (see above). |
 | Compass shows as a purple/black checkerboard | The mod jar didn't load properly. Make sure it's in `mods` on **both** the server and your client. |
 | An admin command says "Unknown command" | You aren't an admin. Get opped, or ask MrBoombox840 / SpeedTellyYT. |
+
+### After a Minecraft or Fabric update
+
+If you update anything and want to check the mod is still healthy, start the server with this extra
+flag:
+
+```
+java -Dimpostorfridays.mixinAudit=true -Xmx4G -jar fabric-server-launch.jar nogui
+```
+
+Look for two `[mixin-audit] OK:` lines near the top of the log. If you see `FAILED` instead, the mod
+needs rebuilding against the new version — don't run a game night on it.
