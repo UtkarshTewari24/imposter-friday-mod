@@ -1,41 +1,172 @@
 # Implementation Notes
 
-Judgment calls, ambiguities, and known tradeoffs. Kept current as the build progresses.
+Judgment calls, ambiguities in the spec, and known tradeoffs.
 
-## Verified toolchain versions (checked live, 2026-09-06)
+---
 
-All of these were resolved against the real registries rather than assumed from memory,
+## 1. Verified toolchain versions
+
+Everything below was resolved against the live registries at build time rather than assumed,
 per Section 0 of the spec.
 
-| Component | Version | Source of truth |
+| Component | Version | How it was confirmed |
 |---|---|---|
-| Minecraft | `1.21.11` | `meta.fabricmc.net/v2/versions/game` — confirmed present and stable |
-| Fabric Loader | `0.19.5` | `meta.fabricmc.net/v2/versions/loader` — current stable |
-| Yarn mappings | `1.21.11+build.6` | `meta.fabricmc.net/v2/versions/yarn/1.21.11` — latest stable build |
-| Fabric Loom | `1.17.20` | `maven.fabricmc.net` — latest **stable** (1.18.0-alpha.* exist but are alphas) |
-| Fabric API | `0.141.6+1.21.11` | `maven.fabricmc.net` — latest for 1.21.11; matches the version named in the spec |
+| Minecraft | `1.21.11` | present and stable in `meta.fabricmc.net/v2/versions/game` |
+| Fabric Loader | `0.19.5` | current stable from `meta.fabricmc.net/v2/versions/loader` |
+| Yarn mappings | `1.21.11+build.6` | latest stable build for 1.21.11 |
+| Fabric Loom | `1.17.20` | latest **stable** on `maven.fabricmc.net` (1.18.0-alpha.* exist but are alphas) |
+| Fabric API | `0.141.6+1.21.11` | latest for 1.21.11; matches the version named in the spec |
 | Gradle | `9.5.1` | matches the official `fabric-example-mod` 1.21.11 branch |
-| Simple Voice Chat API | `2.6.20` | `maven.maxhenkel.de` — latest published `voicechat-api` artifact |
-| Simple Voice Chat (runtime jar) | `fabric-1.21.11-2.6.23` | Modrinth, for 1.21.11 Fabric |
+| Simple Voice Chat API | `2.6.20` | latest `voicechat-api`; confirmed to be exactly what SVC 2.6.23 bundles |
+| Simple Voice Chat (runtime) | `fabric-1.21.11-2.6.23` | Modrinth, for 1.21.11 Fabric |
 
-### Loom plugin id changed
-The official 1.21.11 template uses the plugin id **`net.fabricmc.fabric-loom-remap`**, not the
-historical `fabric-loom`. This is easy to get wrong from memory. Its plugin marker lives at
-`net/fabricmc/fabric-loom-remap/net.fabricmc.fabric-loom-remap.gradle.plugin/`.
+### The Loom plugin id changed
+The 1.21.11 template uses **`net.fabricmc.fabric-loom-remap`**, not the historical `fabric-loom`.
+Its plugin marker lives at `net/fabricmc/fabric-loom-remap/net.fabricmc.fabric-loom-remap.gradle.plugin/`.
 We pin `1.17.20` rather than the template's `1.17-SNAPSHOT` so builds are reproducible.
 
 ### Mappings: Yarn, not Mojang
-The current official template defaults to `loom.officialMojangMappings()`. The spec explicitly
-asks for Yarn, and the class names the spec references (e.g. `net.minecraft.client.render.Camera`)
-are Yarn names, so we use Yarn `1.21.11+build.6`. **Consequence:** every mixin target must be
-verified against Yarn 1.21.11 mappings specifically. Under Mojang mappings that camera class
-would instead be `net.minecraft.client.Camera` — the two naming schemes are not interchangeable,
-and no mixin target in this project is written from memory.
+The current official template defaults to `loom.officialMojangMappings()`. The spec asks for Yarn,
+and the class names it references (e.g. `net.minecraft.client.render.Camera`) are Yarn names, so we
+use Yarn `1.21.11+build.6`. Under Mojang mappings that class would be `net.minecraft.client.Camera` —
+the two schemes are not interchangeable.
 
-### Simple Voice Chat is a soft dependency
-Declared as `compileOnly` and listed under `suggests` (not `depends`) in `fabric.mod.json`, so the
-mod loads and plays normally on servers without SVC installed. All SVC calls are guarded behind a
-runtime presence check.
+---
 
-## Open items
-- Nothing implemented beyond project scaffolding yet; this section grows as features land.
+## 2. 1.21.11 API changes that would have broken this mod
+
+Each of these was found by checking real mappings or bytecode. Every one compiles fine if you guess
+wrong from an older version's memory — and then fails.
+
+| What changed | Old (from memory) | Actual 1.21.11 |
+|---|---|---|
+| Command permissions | `source.hasPermissionLevel(int)` | Gone. `PermissionPredicate.hasPermission(Permission)`; use `new Permission.Level(PermissionLevel.GAMEMASTERS)` |
+| Game rules | `net.minecraft.world.GameRules`, mutable | `net.minecraft.world.rule.GameRules`, an immutable value map; no `server.getGameRules()` — it's on `ServerWorld` |
+| Player name | `GameProfile.getName()` | `GameProfile.name()` — it's a record in authlib 7.x |
+| Entity world | `entity.getWorld()` | `entity.getEntityWorld()` |
+| Chat events | `new ClickEvent(Action.RUN_COMMAND, str)` | Sealed interface: `new ClickEvent.RunCommand(str)`, `new HoverEvent.ShowText(text)` |
+| GUI clicks | `mouseClicked(double, double, int)` | `mouseClicked(Click, boolean)` |
+| **Camera** | `update(BlockView, …)` | `update(World, Entity, boolean, boolean, float)` |
+
+### The camera mixin specifically
+The spec flagged this as a historical failure point, so it was built from the actual bytecode of
+`Camera.setRotation`, not from recall:
+
+```java
+this.rotation.rotationYXZ((float)Math.PI - yaw * 0.017453292f, -pitch * 0.017453292f, 0.0f);
+HORIZONTAL.rotate(this.rotation, this.horizontalPlane);
+VERTICAL.rotate(this.rotation, this.verticalPlane);
+DIAGONAL.rotate(this.rotation, this.diagonalPlane);
+```
+
+The third argument to `rotationYXZ` is **roll**. The flip overrides it from `0` to `PI`. The three
+derived basis vectors must then be recomputed — skipping that leaves movement and projection out of
+sync with what is drawn.
+
+### MixinAudit
+Mixins apply lazily, when their target class is first loaded. `DeathScreen` and `Camera` are not
+loaded during a normal startup, so a broken injection would stay invisible until someone actually
+died or `/gravity` fired mid-session. `MixinAudit` force-loads every mixin target at boot **in the
+dev environment only**, turning that into an immediate, obvious log failure. All four mixins are
+confirmed applying at runtime.
+
+---
+
+## 3. Design decisions where the spec left room
+
+### `/amongussetup` is a chat panel, not a chest GUI
+The spec says "config UI" without specifying a form. It's built as an interactive chat panel with
+clickable `[-] / [+] / [ON|OFF]` controls and a **Save Settings** button.
+
+*Why:* it needs no client-side screen, works on vanilla clients, and every control is a real click.
+A container GUI would have needed a custom `ScreenHandler` with click interception for what is an
+admin-only settings screen. The complexity budget went to the player picker and the steal container
+instead, which players actually interact with. Settings are also reachable non-interactively via
+`/amongussetup set <key> <value>`, which is what made the end-to-end console test possible.
+
+### Anonymised death messages hide the victim too
+The spec's example is literally `"Player killed by Player"`, so that is what is used. Note this
+hides **who died** as well as who killed them. If you'd rather name the victim, it's one line in
+`DamageTrackerMixin`.
+
+The injection is on `DamageTracker.getDeathMessage()` rather than at the broadcast site, because the
+chat broadcast and the packet that fills the victim's own death screen both read that one method —
+so a single override closes both leaks. Natural deaths (fall, lava, mobs) are untouched.
+
+### The locked compass slot in `/steal`
+The spec asks for the Tracking Compass to be "greyed out / not clickable". A vanilla client cannot
+render a greyed-out slot in a standard container, so the slot shows a **barrier item named
+"Tracking Compass (locked)"** and every click type on it is dropped server-side. It reads as
+deliberately locked rather than merely absent.
+
+In practice this is defensive: only the Impostor is given a compass, and they are the one stealing.
+
+### `/steal` consumes the cooldown on **open**, not on taking an item
+Otherwise the Impostor could open everyone's inventory for free reconnaissance and simply never take
+anything.
+
+### `/gravity` uses levitation
+Minecraft has no gravity-inversion API. Levitation is the closest playable approximation, paired
+with the 180° client camera flip. Slow-falling is applied when it expires so the ability is never
+lethal on its own.
+
+### The Sniffer needs 3+ players
+With 2 players, assigning a Sniffer would make both roles known immediately. Below 3 players the
+game runs Impostor vs Innocent regardless of the config setting.
+
+### Baby-animal scanning instead of a breeding event
+Fabric has no breeding event. Breeding tasks are satisfied by periodically scanning loaded entities
+for baby animals of the required types. Simpler, and it naturally covers any route the players find
+to a baby animal.
+
+### `/amongusreset world` prints instructions rather than acting
+A running server cannot safely delete its own save directory — that means unlinking files out from
+under open handles, risking a corrupted or half-deleted world. The spec explicitly asked for world
+regeneration to be "a clearly separate, explicitly confirmed step", so this command prints the exact
+four-step manual procedure and deliberately does not act. **This is the one part of the spec that is
+documented rather than automated**, and it is called out here and in SETUP.md.
+
+---
+
+## 4. Known tradeoffs
+
+### Admins are identified by username, not UUID
+Per the spec, `Permissions.ADMIN_USERNAMES` holds `MrBoombox840` and `SpeedTellyYT` as **usernames**.
+**If either of them changes their Mojang username, their admin access silently stops working** — the
+check will simply stop matching, with no error explaining why.
+
+Server operator level 2+ works as an alternative path, so this is recoverable, but it is a real
+sharp edge. Switching to UUIDs would fix it permanently and is a small change to one constant.
+
+### `/amongusreset` only affects players who are online
+Offline players keep their items until they log in and are reset manually. The command says so when
+it runs.
+
+### The compass needle across dimensions
+A lodestone target in another dimension just makes the vanilla needle spin. Targets are therefore
+projected into the holder's own dimension, with the 8:1 Nether scale applied, so the needle gives a
+meaningful bearing. It points toward where the target *would* be, which is the useful behaviour, but
+it is an approximation rather than a true 3D bearing.
+
+### `/start` enables `keepInventory`
+Required by the spec (players must never lose items on death). This is a world-state change that
+persists after the match ends — it is not reverted on `/end`, since reverting it would risk item
+loss in the gap between rounds.
+
+---
+
+## 5. What has and has not been verified
+
+**Verified automatically:**
+- Compiles cleanly; `runServer` and `runClient` both launch with zero errors
+- All four mixins confirmed applying at runtime via MixinAudit
+- 17 unit tests: config round-trip, clamping, malformed-file recovery, shared-cooldown semantics,
+  timer expiry, role lookup, death timers, task pool integrity
+- End-to-end console test: `/amongussetup` renders and mutates, `save` writes correct values to
+  disk, `/start` refuses below 2 players, `/end` no-ops safely, `/amongusreset` warns
+- The Tracking Compass model resolves with no missing-model or missing-texture errors
+
+**NOT verified — needs real players.** See [MANUAL_TEST_CHECKLIST.md](MANUAL_TEST_CHECKLIST.md).
+Nothing involving two or more simultaneous human players has been exercised: role assignment in a
+real match, the abilities actually firing, the gravity flip on screen, the steal container being
+dragged in, the death screen countdown, or voice chat muting.

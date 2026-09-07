@@ -1,6 +1,8 @@
 # Gradle
 .gradle/
 build/
+# (dist/ is deliberately NOT ignored - the packaged jar ships with the repo
+#  so it can be handed straight to the server host and players)
 out/
 classes/
 

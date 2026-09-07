@@ -3,6 +3,7 @@ package com.impostorfridays.client;
 import com.impostorfridays.ImpostorFridays;
 import com.impostorfridays.client.hud.GameHud;
 import com.impostorfridays.client.hud.RoleAnnouncementHud;
+import com.impostorfridays.client.hud.SniffCueHud;
 import com.impostorfridays.client.screen.PlayerPickerScreen;
 import com.impostorfridays.game.Role;
 import com.impostorfridays.net.GameSyncS2C;
@@ -21,6 +22,7 @@ public class ImpostorFridaysClient implements ClientModInitializer {
 	public void onInitializeClient() {
 		GameHud.register();
 		RoleAnnouncementHud.register();
+		SniffCueHud.register();
 
 		ClientPlayNetworking.registerGlobalReceiver(GameSyncS2C.ID, (payload, context) ->
 				context.client().execute(() -> applySync(payload)));

@@ -15,7 +15,6 @@ import net.minecraft.component.DataComponentTypes;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -79,18 +78,12 @@ public class StealScreenHandler extends GenericContainerScreenHandler {
 
 	@Override
 	public void onSlotClick(int slotIndex, int button, SlotActionType actionType, PlayerEntity player) {
-		// Locked slots (filler + the compass) are inert: no take, no swap, no hotbar swap.
+		// Locked slots (filler + the compass) are inert for EVERY click type, including
+		// hotbar/offhand swaps, which would otherwise bypass a take-only check.
 		if (isChestSlot(slotIndex) && lockedSlots.contains(slotIndex)) {
 			return;
 		}
 
-		// A hotbar/offhand swap targeting a locked slot would otherwise bypass the check above.
-		if (actionType == SlotActionType.SWAP && isChestSlot(slotIndex)
-				&& lockedSlots.contains(slotIndex)) {
-			return;
-		}
-
-		boolean chestHadItemsBefore = countChestItems() > 0;
 		int beforeCount = countChestItems();
 
 		if (stealUsed && isChestSlot(slotIndex)) {
@@ -105,7 +98,7 @@ public class StealScreenHandler extends GenericContainerScreenHandler {
 		super.onSlotClick(slotIndex, button, actionType, player);
 
 		// If the target's side lost anything, that was the one permitted steal.
-		if (chestHadItemsBefore && countChestItems() < beforeCount) {
+		if (countChestItems() < beforeCount) {
 			stealUsed = true;
 			if (player instanceof ServerPlayerEntity serverPlayer) {
 				serverPlayer.sendMessage(Text.literal("Item stolen. Close the menu to finish.")

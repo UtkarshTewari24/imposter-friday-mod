@@ -104,9 +104,11 @@ public final class AbilityManager {
 			target.removeStatusEffect(StatusEffects.BLINDNESS);
 			target.removeStatusEffect(StatusEffects.DARKNESS);
 			target.removeStatusEffect(StatusEffects.WEAKNESS);
-			// Only un-hide players the Invis ability isn't currently hiding.
-			if (state == null || !state.isEffectActive(Ability.INVIS)
-					|| state.isImpostor(target.getUuid()) == false) {
+			// Don't un-hide the Impostor if /invis is still running and hiding them.
+			boolean stillHiddenByInvis = state != null
+					&& state.isEffectActive(Ability.INVIS)
+					&& state.isImpostor(target.getUuid());
+			if (!stillHiddenByInvis) {
 				NametagHider.show(target);
 			}
 		}

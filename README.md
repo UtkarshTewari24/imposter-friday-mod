@@ -1,0 +1,114 @@
+# Impostor Fridays
+
+An Among Us-style social deduction game mode for Minecraft — where **Minecraft itself is the game board**.
+
+Everyone joins a normal Minecraft world for a timed match (90 minutes by default). One player is
+secretly the Impostor. Everyone else shares one real Minecraft objective — activate a beacon, breed
+a panda and a mooshroom and a goat, get the whole crew into diamond armour — and has to finish it
+before the clock runs out.
+
+The Impostor's job is to stop them, using abilities that sow confusion without ever making it
+obvious who they are. Nobody is ever eliminated: death is a short respawn timer, never the end of
+your game.
+
+- **Minecraft version:** 1.21.11
+- **Mod loader:** Fabric
+- **Requires:** Fabric API
+- **Optional:** [Simple Voice Chat](https://modrinth.com/mod/simple-voice-chat)
+
+**New here? Read [SETUP.md](SETUP.md)** — it walks through installing this on a server and on
+Lunar Client in plain language.
+
+---
+
+## Roles
+
+| Role | Who | What they do |
+|---|---|---|
+| **Innocent** | Everyone else | Work on the shared task. Can be tracked, blinded, robbed and flipped upside down. |
+| **Impostor** | One random player | Gets a Tracking Compass. Has five abilities on one shared cooldown. Wants the clock to run out. |
+| **Sniffer** | One random player (optional) | Can test one suspect at a time. Guessing right permanently strips one of the Impostor's abilities. |
+
+You only ever see **your own** role. Nobody is told anyone else's, ever.
+
+## The Impostor's abilities
+
+All five share **one cooldown** (5 minutes by default) — using any one locks all of them.
+
+| Command | Effect |
+|---|---|
+| `/steal <player>` | Opens a real chest-style view of that player's inventory. You may take **one** stack. |
+| `/swap <player1> <player2>` | Silently swaps two players' locations, even across dimensions. |
+| `/blind` | Blinds and weakens **every** Innocent at once. |
+| `/gravity` | Flips everyone else's world upside down. |
+| `/invis` | Total invisibility — no body, no armour, no held item, no nametag. |
+
+Dying does **not** cost you the Impostor role or any of your abilities.
+
+## The Sniffer
+
+`/sniff` opens a player picker. Pick the real Impostor and one of their abilities is gone for the
+rest of the match. Pick wrong and you have simply learned that person is innocent.
+
+The person you sniffed is told it happened — but **nobody else can tell**. There are no particles
+or sounds a bystander could use to work out who was tested.
+
+## Commands
+
+### Anyone
+| Command | Description |
+|---|---|
+| `/sniff` | Sniffer only — opens the suspect picker. |
+| `/steal`, `/swap`, `/blind`, `/gravity`, `/invis` | Impostor only. |
+
+### Admins
+Admins are the usernames hardcoded in `Permissions.ADMIN_USERNAMES` (`MrBoombox840`,
+`SpeedTellyYT`) **or** anyone with server operator level 2+.
+
+| Command | Description |
+|---|---|
+| `/start` | Begins a match. Needs at least 2 players. |
+| `/end` | Ends the match and clears all state. Safe to run when nothing is running. |
+| `/amongussetup` | Opens the clickable settings panel. |
+| `/amongusreset` | **Destructive.** Wipes everyone's inventory, ender chest and XP. Requires confirmation. |
+
+## Your world is never wiped by accident
+
+This matters enough to state plainly:
+
+- **`/start` and `/end` never touch your items, XP, builds, or the world.** Everything you find and
+  build persists across matches, indefinitely.
+- The only exception is the Tracking Compass: it is given to the Impostor at `/start` and removed
+  from everyone at `/end`, so a previous round's Impostor isn't left holding one.
+- **The only thing that wipes anything is `/amongusreset`**, which is admin-only and asks you to
+  confirm first.
+
+## Settings
+
+`/amongussetup` opens a clickable panel covering match length, respawn delay, the Impostor
+cooldown, which abilities are enabled and how long each lasts, the Sniffer and its cooldown, task
+difficulty, and voice chat muting. Press **Save Settings** to write them to
+`config/amongusgame.properties`.
+
+Task difficulty picks which pool the shared objective is drawn from:
+
+- **Easy** — breed three farm animals, full iron for everyone, enchant something
+- **Standard** — a panda, a mooshroom and a goat; full diamond for every Innocent; fill a shulker box
+- **Hard** — activate a beacon, defeat the Wither, full netherite, recover an elytra
+
+## Building from source
+
+```bash
+./gradlew build          # jar lands in build/libs/
+./gradlew test           # unit tests
+./gradlew runServer      # local dev server
+./gradlew runClient      # local dev client
+```
+
+Requires JDK 21.
+
+## Documentation
+
+- [SETUP.md](SETUP.md) — installing on a server and on Lunar Client
+- [MANUAL_TEST_CHECKLIST.md](MANUAL_TEST_CHECKLIST.md) — what to test with real players
+- [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md) — judgment calls and known tradeoffs
