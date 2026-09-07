@@ -16,8 +16,13 @@ your game.
 - **Requires:** Fabric API
 - **Optional:** [Simple Voice Chat](https://modrinth.com/mod/simple-voice-chat)
 
-**New here? Read [SETUP.md](SETUP.md)** — it walks through installing this on a server and on
-Lunar Client in plain language.
+## ▶ Start here
+
+**[📖 GET_STARTED.md](GET_STARTED.md) — the complete step-by-step guide.**
+Hosting a server, joining as a player, your first game, and troubleshooting. No programming needed.
+
+**[⬇ Download the mod](https://github.com/UtkarshTewari24/imposter-friday-mod/releases)** from the
+Releases page.
 
 ---
 
@@ -109,6 +114,7 @@ Requires JDK 21.
 
 ## Documentation
 
-- [SETUP.md](SETUP.md) — installing on a server and on Lunar Client
+- **[GET_STARTED.md](GET_STARTED.md) — the full tutorial. Start here.**
+- [SETUP.md](SETUP.md) — condensed install reference
 - [MANUAL_TEST_CHECKLIST.md](MANUAL_TEST_CHECKLIST.md) — what to test with real players
 - [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md) — judgment calls and known tradeoffs

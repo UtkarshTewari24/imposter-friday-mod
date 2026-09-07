@@ -1,5 +1,9 @@
 # Setting up Impostor Fridays
 
+> **Looking for the full walkthrough?** [GET_STARTED.md](GET_STARTED.md) is the complete guide,
+> including where to download everything, your first game, and a bigger troubleshooting section.
+> This page is the condensed version.
+
 Written for people who play Minecraft, not people who write it. No programming needed.
 
 There are two halves:
