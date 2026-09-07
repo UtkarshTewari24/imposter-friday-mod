@@ -3,6 +3,8 @@ package com.impostorfridays.command;
 import com.impostorfridays.config.GameConfig;
 import com.impostorfridays.game.Ability;
 import com.impostorfridays.task.Difficulty;
+import com.impostorfridays.task.TaskSet;
+import com.impostorfridays.task.TaskSets;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.server.command.CommandManager;
@@ -75,6 +77,7 @@ public final class SetupCommand {
 				case "sniffer" -> cfg.setSnifferEnabled(Boolean.parseBoolean(value));
 				case "mutedead" -> cfg.setMuteDeadPlayers(Boolean.parseBoolean(value));
 				case "difficulty" -> cfg.setDifficulty(Difficulty.byName(value));
+				case "taskset" -> cfg.setTaskSet(value);
 				default -> {
 					if (key.startsWith("ability.")) {
 						Ability a = Ability.byId(key.substring("ability.".length()));
@@ -130,6 +133,7 @@ public final class SetupCommand {
 		send(source, numberRow("Sniff cooldown", cfg.getSnifferCooldownSeconds(), "sec", "sniffercd", 30));
 
 		send(source, header("Tasks"));
+		sendTaskSetRows(source, cfg);
 		send(source, difficultyRow(cfg));
 
 		send(source, header("Voice chat"));
@@ -184,14 +188,56 @@ public final class SetupCommand {
 		return row;
 	}
 
+	/**
+	 * The preset set list. Each set is a curated bundle of objectives balanced to be finishable
+	 * inside a match; RANDOM falls back to drawing a single task from the difficulty pool.
+	 */
+	private static void sendTaskSetRows(ServerCommandSource source, GameConfig cfg) {
+		boolean random = TaskSets.isRandom(cfg.getTaskSet());
+
+		send(source, Text.literal("  Task set:").formatted(Formatting.GRAY));
+
+		for (TaskSet set : TaskSets.all()) {
+			boolean selected = !random && set.id().equalsIgnoreCase(cfg.getTaskSet());
+			MutableText row = Text.literal("   ")
+					.append(button(selected ? "[✔] " : "[ ] ",
+							"/amongussetup set taskset " + set.id(),
+							set.blurb() + "\n" + set.taskIds().size() + " objectives, about "
+									+ set.estimateMins() + " minutes",
+							selected ? Formatting.GREEN : Formatting.DARK_GRAY))
+					.append(button(set.displayName(),
+							"/amongussetup set taskset " + set.id(),
+							set.blurb(),
+							selected ? Formatting.GOLD : Formatting.GRAY))
+					.append(Text.literal("  ~" + set.estimateMins() + " min")
+							.formatted(Formatting.DARK_GRAY));
+			send(source, row);
+		}
+
+		send(source, Text.literal("   ")
+				.append(button(random ? "[✔] " : "[ ] ", "/amongussetup set taskset RANDOM",
+						"Draw one random task from the difficulty pool below",
+						random ? Formatting.GREEN : Formatting.DARK_GRAY))
+				.append(button("Random single task", "/amongussetup set taskset RANDOM",
+						"Draw one random task from the difficulty pool below",
+						random ? Formatting.GOLD : Formatting.GRAY)));
+	}
+
 	private static Text difficultyRow(GameConfig cfg) {
-		MutableText row = Text.literal("  Difficulty: ").formatted(Formatting.GRAY);
+		boolean usesDifficulty = TaskSets.isRandom(cfg.getTaskSet());
+		// Difficulty only decides anything when no preset set is chosen.
+		MutableText row = Text.literal("  Difficulty: ")
+				.formatted(usesDifficulty ? Formatting.GRAY : Formatting.DARK_GRAY);
 		for (Difficulty d : Difficulty.values()) {
 			boolean sel = cfg.getDifficulty() == d;
 			row.append(button(sel ? "[" + d.getDisplayName() + "]" : " " + d.getDisplayName() + " ",
 					"/amongussetup set difficulty " + d.name(),
 					"Use the " + d.getDisplayName() + " task pool",
-					sel ? Formatting.GOLD : Formatting.DARK_GRAY));
+					sel ? (usesDifficulty ? Formatting.GOLD : Formatting.DARK_GRAY)
+							: Formatting.DARK_GRAY));
+		}
+		if (!usesDifficulty) {
+			row.append(Text.literal("  (unused — a set is selected)").formatted(Formatting.DARK_GRAY));
 		}
 		return row;
 	}

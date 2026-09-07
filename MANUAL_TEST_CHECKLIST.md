@@ -164,14 +164,28 @@ Turn the Sniffer on in `/amongussetup` first. It needs at least 3 players.
 
 ---
 
-## Test 6 — Tasks
+## Test 6 — Tasks and task sets
 
-- [ ] 6.1 Set difficulty to **Easy**, `/start`. The task shown is an easy one
-- [ ] 6.2 Set difficulty to **Hard**, `/start`. The task is a hard one
-- [ ] 6.3 Run `/start` several times — you don't always get the same task
-- [ ] 6.4 Actually complete a task. A completion message is broadcast and the Innocents win
-- [ ] 6.5 **Important:** if a task mentions an advancement you already earned in a previous round on this world (e.g. "enter the Nether"), it must **not** complete instantly. It has to be done again this match
-- [ ] 6.6 Let the timer run to zero without finishing. The Impostor wins and the game ends cleanly
+**Task sets**
+- [ ] 6.1 `/amongussetup` shows a **Task set** list with Set 1-6 and "Random single task"
+- [ ] 6.2 Clicking a set marks it with `[✔]` and unmarks the others
+- [ ] 6.3 With a set selected, the Difficulty row greys out and says "(unused — a set is selected)"
+- [ ] 6.4 `/start` with a set — the HUD shows **three** objectives with an `Objectives 0/3` header
+- [ ] 6.5 Complete **one** objective. It goes green and struck through, the counter reads `1/3`, and chat announces it with `(1/3)`
+- [ ] 6.6 The other two objectives are still listed and still yellow
+- [ ] 6.7 The game does **not** end until all three are done
+- [ ] 6.8 Complete all three — "The Innocents win!" and the game ends
+
+**Random mode**
+- [ ] 6.9 Select **Random single task**, set difficulty **Easy**, `/start`. One easy task is shown
+- [ ] 6.10 Set difficulty **Hard**, `/start`. One hard task is shown
+- [ ] 6.11 Run `/start` several times — you don't always get the same task
+- [ ] 6.12 Actually complete it. A completion message is broadcast and the Innocents win
+**Persistence — these two matter most, please don't skip them**
+- [ ] 6.13 If a task mentions an advancement someone already earned in a previous round on this world (e.g. "enter the Nether"), it must **not** complete instantly. It has to be done again this match
+- [ ] 6.14 If a task says "obtain a Goat Horn" and someone **already has one** from a previous round, it must **not** complete instantly — the group has to get *another* one
+- [ ] 6.15 Have someone join **mid-match** who has played on this world before. No objective should suddenly complete when they connect
+- [ ] 6.16 Let the timer run to zero without finishing. The Impostor wins and the game ends cleanly
 
 ---
 

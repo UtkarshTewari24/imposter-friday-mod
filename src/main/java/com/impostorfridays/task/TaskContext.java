@@ -12,7 +12,10 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.UUID;
 import java.util.List;
 import java.util.Set;
 
@@ -35,6 +38,17 @@ public final class TaskContext {
 	final Set<String> playerDeathCauses = new HashSet<>();
 	/** Entity type ids of baby animals seen alive this match (i.e. successfully bred). */
 	final Set<String> babyAnimals = new HashSet<>();
+
+	/**
+	 * How much of each item the group already held when the match started.
+	 *
+	 * <p>The world persists indefinitely between matches, so "obtain a Goat Horn" would complete
+	 * the instant someone still had one from a previous round. Item tasks therefore measure the
+	 * INCREASE since /start, not the raw amount held.
+	 */
+	final Map<Item, Integer> itemBaseline = new HashMap<>();
+	/** Players already folded into {@link #itemBaseline}, so late joiners cannot inflate it. */
+	final Set<UUID> baselinedPlayers = new HashSet<>();
 
 	TaskContext(MinecraftServer server) {
 		this.server = server;
@@ -111,9 +125,41 @@ public final class TaskContext {
 		return server.getPlayerManager().getPlayerList();
 	}
 
-	/** True if any player is currently carrying at least one of this item. */
+	/**
+	 * True if the group has obtained at least one more of this item than it started with.
+	 *
+	 * <p>Use this rather than {@link #anyPlayerHas} for "go and get X" objectives, so the task
+	 * cannot be satisfied by loot carried over from an earlier match.
+	 */
+	public boolean gained(Item item) {
+		return gained(item, 1);
+	}
+
+	/** True if the group has gained at least {@code amount} more of this item since /start. */
+	public boolean gained(Item item, int amount) {
+		return totalCount(item) - itemBaseline.getOrDefault(item, 0) >= amount;
+	}
+
+	/**
+	 * True if any player is currently carrying at least one of this item, regardless of when
+	 * they got it. Prefer {@link #gained} for objectives the players are meant to go and do.
+	 */
 	public boolean anyPlayerHas(Item item) {
 		return totalCount(item) > 0;
+	}
+
+	/** Folds a player's current inventory into the baseline. Called once per player. */
+	void addToBaseline(ServerPlayerEntity player) {
+		if (!baselinedPlayers.add(player.getUuid())) {
+			return;
+		}
+		PlayerInventory inv = player.getInventory();
+		for (int i = 0; i < inv.size(); i++) {
+			ItemStack stack = inv.getStack(i);
+			if (!stack.isEmpty()) {
+				itemBaseline.merge(stack.getItem(), stack.getCount(), Integer::sum);
+			}
+		}
 	}
 
 	/** Total count of an item across every player's inventory. */

@@ -66,6 +66,22 @@ class GameConfigTest {
 	}
 
 	@Test
+	void taskSetRoundTripsAndRejectsUnknownIds() {
+		GameConfig cfg = new GameConfig();
+		cfg.setTaskSet("set3");
+		assertEquals("set3", cfg.getTaskSet());
+
+		Properties saved = cfg.writeTo();
+		GameConfig loaded = new GameConfig();
+		loaded.readFrom(saved);
+		assertEquals("set3", loaded.getTaskSet());
+
+		// A hand-edited file naming a set that doesn't exist must not break the game.
+		cfg.setTaskSet("does_not_exist");
+		assertEquals("RANDOM", cfg.getTaskSet(), "unknown set ids fall back to RANDOM");
+	}
+
+	@Test
 	void convertsMinutesToTicks() {
 		GameConfig cfg = new GameConfig();
 		cfg.setGameLengthMinutes(90);

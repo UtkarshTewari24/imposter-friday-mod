@@ -142,7 +142,43 @@ documented rather than automated**, and it is called out here and in SETUP.md.
 
 ---
 
-## 4. Known tradeoffs
+## 4. Task sets and how they are balanced
+
+A set is three objectives that the Innocents must ALL complete. Every set is built to the same
+shape, and the shape is the balance:
+
+- **One anchor** — the hard objective that actually decides the match
+- **One spread** — needs several biomes or dimensions, so the group must split up and people end
+  up alone together. This is what generates suspicion; a set everyone can do in one place produces
+  no social gameplay at all.
+- **One light** — a quick win, so a bad start never feels hopeless and the Impostor can't win by
+  simply stalling the opening twenty minutes.
+
+Two constraints are enforced by unit test rather than by care:
+
+- **No set stacks two boss-tier objectives** (Wither plus Dragon). That cannot be finished inside
+  a match, which is an automatic Impostor win.
+- **Every set's task ids must resolve.** `TaskSet.resolve()` silently skips ids it cannot find, so
+  a single typo would quietly drop an objective and nobody would notice until a match ran short.
+
+Estimates assume 4-8 players with an Impostor actively disrupting, and are asserted to sit between
+30 and 90 minutes.
+
+### Item objectives measure the increase, not the amount held
+
+The world persists indefinitely between matches, which quietly broke eight tasks: "obtain a Goat
+Horn" completed the instant anyone still had one from a previous round, and by the third match
+several objectives would win the game immediately.
+
+Item checks now use `TaskContext.gained(item)`, which compares against a baseline captured at
+`/start` — and, like the advancement baseline, that baseline is per player and captured on first
+sight so a late joiner's inventory cannot satisfy the objective for everyone.
+
+Two tasks were also re-tiered after checking what they actually require: filling a shulker box
+needs End City shells, and a woodland mansion can be thousands of blocks away. Both moved from
+STANDARD to HARD.
+
+## 5. Known tradeoffs
 
 ### Admins are identified by username, not UUID
 Per the spec, `Permissions.ADMIN_USERNAMES` holds `MrBoombox840` and `SpeedTellyYT` as **usernames**.
@@ -169,7 +205,7 @@ loss in the gap between rounds.
 
 ---
 
-## 5. What has and has not been verified
+## 6. What has and has not been verified
 
 **Verified automatically:**
 - Compiles cleanly; `runServer` and `runClient` both launch with zero errors

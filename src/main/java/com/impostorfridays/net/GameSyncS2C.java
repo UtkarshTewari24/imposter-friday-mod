@@ -6,6 +6,9 @@ import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.util.Identifier;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Authoritative per-player game state, pushed from the server.
  *
@@ -19,8 +22,7 @@ import net.minecraft.util.Identifier;
  * @param snifferCooldownTicks  sniff cooldown (0 when not the Sniffer)
  * @param gravityActive  whether this player's camera should be flipped
  * @param respawnTicks   ticks until this player may respawn (0 when alive)
- * @param taskText       current shared task description
- * @param taskComplete   whether the shared task has been completed
+ * @param tasks          every objective in the current set, with its completion state
  */
 public record GameSyncS2C(
 		boolean active,
@@ -30,15 +32,23 @@ public record GameSyncS2C(
 		int snifferCooldownTicks,
 		boolean gravityActive,
 		int respawnTicks,
-		String taskText,
-		boolean taskComplete
+		List<TaskLine> tasks
 ) implements CustomPayload {
+
+	/** One objective as shown on the HUD. */
+	public record TaskLine(String text, boolean done) {
+	}
 
 	public static final CustomPayload.Id<GameSyncS2C> ID =
 			new CustomPayload.Id<>(Identifier.of(ImpostorFridays.MOD_ID, "game_sync"));
 
 	public static final PacketCodec<RegistryByteBuf, GameSyncS2C> CODEC =
 			PacketCodec.of(GameSyncS2C::write, GameSyncS2C::read);
+
+	/** The payload sent when no match is running, which clears every overlay. */
+	public static GameSyncS2C inactive() {
+		return new GameSyncS2C(false, 0, 0, 0, 0, false, 0, List.of());
+	}
 
 	private void write(RegistryByteBuf buf) {
 		buf.writeBoolean(active);
@@ -48,22 +58,27 @@ public record GameSyncS2C(
 		buf.writeVarInt(snifferCooldownTicks);
 		buf.writeBoolean(gravityActive);
 		buf.writeVarInt(respawnTicks);
-		buf.writeString(taskText);
-		buf.writeBoolean(taskComplete);
+		buf.writeVarInt(tasks.size());
+		for (TaskLine line : tasks) {
+			buf.writeString(line.text());
+			buf.writeBoolean(line.done());
+		}
 	}
 
 	private static GameSyncS2C read(RegistryByteBuf buf) {
-		return new GameSyncS2C(
-				buf.readBoolean(),
-				buf.readVarInt(),
-				buf.readVarInt(),
-				buf.readVarInt(),
-				buf.readVarInt(),
-				buf.readBoolean(),
-				buf.readVarInt(),
-				buf.readString(),
-				buf.readBoolean()
-		);
+		boolean active = buf.readBoolean();
+		int remaining = buf.readVarInt();
+		int role = buf.readVarInt();
+		int impostorCd = buf.readVarInt();
+		int snifferCd = buf.readVarInt();
+		boolean gravity = buf.readBoolean();
+		int respawn = buf.readVarInt();
+		int count = buf.readVarInt();
+		List<TaskLine> tasks = new ArrayList<>(count);
+		for (int i = 0; i < count; i++) {
+			tasks.add(new TaskLine(buf.readString(), buf.readBoolean()));
+		}
+		return new GameSyncS2C(active, remaining, role, impostorCd, snifferCd, gravity, respawn, tasks);
 	}
 
 	@Override

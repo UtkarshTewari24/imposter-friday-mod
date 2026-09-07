@@ -95,10 +95,31 @@ cooldown, which abilities are enabled and how long each lasts, the Sniffer and i
 difficulty, and voice chat muting. Press **Save Settings** to write them to
 `config/amongusgame.properties`.
 
-Task difficulty picks which pool the shared objective is drawn from:
+### Task sets
+
+Pick a **preset set** of three objectives, or leave it on **Random** for a single task drawn from
+the difficulty pool.
+
+| Set | Feel | Rough length |
+|---|---|---|
+| **Set 1 — First Light** | Gentle. Good for a group's first game. | ~50 min |
+| **Set 2 — Groundwork** | The standard game. Sends people in three directions. | ~70 min |
+| **Set 3 — Deep Cuts** | Heavier. Mining, a village project, a bit of luck. | ~80 min |
+| **Set 4 — The Long Haul** | Hard. Built around one big objective. | ~90 min |
+| **Set 5 — Endgame** | Very hard. Ender Dragon. | ~90 min |
+| **Set 6 — Scattered** | Maximum splitting up. | ~75 min |
+
+Every set is built the same way — **one anchor** (the hard objective that decides the match), **one
+spread** (something needing several biomes or dimensions, so the group has to separate), and **one
+light** (a quick win so a bad start never feels hopeless). No set stacks two boss-tier objectives,
+because that can't be finished in the time.
+
+Innocents must complete **all three** to win. The HUD shows progress as they go.
+
+On **Random**, difficulty picks the pool the single task is drawn from:
 
 - **Easy** — breed three farm animals, full iron for everyone, enchant something
-- **Standard** — a panda, a mooshroom and a goat; full diamond for every Innocent; fill a shulker box
+- **Standard** — a panda, a mooshroom and a goat; full diamond for every Innocent; cure a villager
 - **Hard** — activate a beacon, defeat the Wither, full netherite, recover an elytra
 
 ## Building from source

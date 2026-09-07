@@ -245,6 +245,26 @@ Create a 1.21.11 instance, add Fabric, then drag the three jars into the instanc
 
 Run `/start` again for another round whenever you like. **Everyone keeps everything.**
 
+### Choosing what to do
+
+In `/amongussetup` you pick either a **preset set** of three objectives, or **Random** (one task
+drawn from the difficulty pool).
+
+| Set | Feel | Rough length |
+|---|---|---|
+| **Set 1 — First Light** | Gentle. Good for a first game. | ~50 min |
+| **Set 2 — Groundwork** | The standard game. | ~70 min |
+| **Set 3 — Deep Cuts** | Heavier — mining and a village project. | ~80 min |
+| **Set 4 — The Long Haul** | Hard. One big objective at its centre. | ~90 min |
+| **Set 5 — Endgame** | Very hard. The Ender Dragon. | ~90 min |
+| **Set 6 — Scattered** | Everyone ends up somewhere different. | ~75 min |
+
+**Start with Set 1.** Each set is three objectives and the Innocents must finish **all three**,
+with progress shown on everyone's HUD.
+
+Each one mixes a hard anchor, something that forces the group to split across biomes, and a quick
+win so a bad start never feels hopeless — that mix is what keeps it fair for both sides.
+
 ### Suggested first-time settings
 
 Real games are 90 minutes. For your first test, try:
@@ -252,7 +272,7 @@ Real games are 90 minutes. For your first test, try:
 | Setting | Try |
 |---|---|
 | Game length | **15 minutes** |
-| Difficulty | **Easy** |
+| Task set | **Set 1 — First Light** |
 | Ability cooldown | **60 seconds** |
 
 That way you see the whole loop quickly. Bump them back up once everyone knows the rules.

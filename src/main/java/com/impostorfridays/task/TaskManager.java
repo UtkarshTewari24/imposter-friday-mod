@@ -3,6 +3,7 @@ package com.impostorfridays.task;
 import com.impostorfridays.ImpostorFridays;
 import com.impostorfridays.config.GameConfig;
 import com.impostorfridays.game.GameManager;
+import com.impostorfridays.net.GameSyncS2C;
 import net.minecraft.advancement.AdvancementEntry;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
@@ -16,10 +17,12 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.UUID;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -39,7 +42,11 @@ public final class TaskManager {
 	private static final int POLL_INTERVAL = 40;
 
 	private static TaskContext context;
-	private static TaskDefinition activeTask;
+	/** Every objective for this match. One entry for RANDOM, several for a preset set. */
+	private static List<TaskDefinition> activeTasks = List.of();
+	/** Ids of objectives already finished, so each is announced exactly once. */
+	private static final Set<String> completedTaskIds = new HashSet<>();
+	private static TaskSet activeSet;
 	/**
 	 * Per-player snapshot of advancements already earned before this match counted.
 	 *
@@ -54,8 +61,13 @@ public final class TaskManager {
 	private TaskManager() {
 	}
 
-	public static TaskDefinition getActiveTask() {
-		return activeTask;
+	public static List<TaskDefinition> getActiveTasks() {
+		return activeTasks;
+	}
+
+	/** The preset set in play, or null when running a single random task. */
+	public static TaskSet getActiveSet() {
+		return activeSet;
 	}
 
 	// ------------------------------------------------------------------
@@ -66,29 +78,56 @@ public final class TaskManager {
 		context = new TaskContext(server);
 		completed = false;
 		tickCounter = 0;
+		completedTaskIds.clear();
 
-		activeTask = TaskPools.random(GameConfig.get().getDifficulty());
-		if (activeTask == null) {
-			ImpostorFridays.LOGGER.warn("No tasks defined for difficulty {}",
-					GameConfig.get().getDifficulty());
-			GameManager.setTaskText("");
+		GameConfig cfg = GameConfig.get();
+		String setId = cfg.getTaskSet();
+		activeSet = TaskSets.isRandom(setId) ? null : TaskSets.byId(setId);
+
+		if (activeSet != null) {
+			activeTasks = activeSet.resolve();
+		} else {
+			TaskDefinition single = TaskPools.random(cfg.getDifficulty());
+			activeTasks = single == null ? List.of() : List.of(single);
+		}
+
+		if (activeTasks.isEmpty()) {
+			ImpostorFridays.LOGGER.warn("No tasks available (set={}, difficulty={})",
+					setId, cfg.getDifficulty());
+			GameManager.setTaskLines(List.of());
 			return;
 		}
 
 		advancementBaseline = new HashMap<>();
 		for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
 			advancementBaseline.put(player.getUuid(), snapshotAdvancements(server, player));
+			context.addToBaseline(player);
 		}
-		GameManager.setTaskText(activeTask.description());
-		GameManager.setTaskComplete(false);
+		publishTaskLines();
 
-		ImpostorFridays.LOGGER.info("Task for this match [{}]: {}",
-				activeTask.id(), activeTask.description());
+		if (activeSet != null) {
+			ImpostorFridays.LOGGER.info("Task set for this match: {} ({} objectives, ~{} min)",
+					activeSet.displayName(), activeTasks.size(), activeSet.estimateMins());
+		}
+		for (TaskDefinition task : activeTasks) {
+			ImpostorFridays.LOGGER.info("  objective [{}]: {}", task.id(), task.description());
+		}
+	}
+
+	/** Pushes the current objective list and its completion state to every HUD. */
+	private static void publishTaskLines() {
+		List<GameSyncS2C.TaskLine> lines = new ArrayList<>();
+		for (TaskDefinition task : activeTasks) {
+			lines.add(new GameSyncS2C.TaskLine(task.description(), completedTaskIds.contains(task.id())));
+		}
+		GameManager.setTaskLines(lines);
 	}
 
 	public static void end() {
 		context = null;
-		activeTask = null;
+		activeTasks = List.of();
+		activeSet = null;
+		completedTaskIds.clear();
 		advancementBaseline = new HashMap<>();
 		completed = false;
 		tickCounter = 0;
@@ -130,7 +169,7 @@ public final class TaskManager {
 	// ------------------------------------------------------------------
 
 	public static void tick(MinecraftServer server) {
-		if (context == null || activeTask == null || completed || !GameManager.isActive()) {
+		if (context == null || activeTasks.isEmpty() || completed || !GameManager.isActive()) {
 			return;
 		}
 		if (++tickCounter < POLL_INTERVAL) {
@@ -141,13 +180,29 @@ public final class TaskManager {
 		refreshAdvancements(server);
 		scanForBabyAnimals(server);
 
-		if (activeTask.check().isComplete(context)) {
+		boolean somethingFinished = false;
+		for (TaskDefinition task : activeTasks) {
+			if (completedTaskIds.contains(task.id())) {
+				continue;
+			}
+			if (task.check().isComplete(context)) {
+				completedTaskIds.add(task.id());
+				somethingFinished = true;
+				GameManager.broadcast(server, Text.literal("✔ ")
+						.formatted(Formatting.GREEN, Formatting.BOLD)
+						.append(Text.literal(task.completionMessage()).formatted(Formatting.GREEN))
+						.append(Text.literal("  (" + completedTaskIds.size() + "/"
+								+ activeTasks.size() + ")").formatted(Formatting.DARK_GREEN)));
+			}
+		}
+
+		if (somethingFinished) {
+			publishTaskLines();
+		}
+
+		// The Innocents win only once every objective in the set is done.
+		if (completedTaskIds.size() >= activeTasks.size()) {
 			completed = true;
-			GameManager.setTaskComplete(true);
-			GameManager.broadcast(server, Text.literal("✔ TASK COMPLETE — ")
-					.formatted(Formatting.GREEN, Formatting.BOLD)
-					.append(Text.literal(activeTask.completionMessage())
-							.formatted(Formatting.GREEN)));
 			GameManager.broadcast(server, Text.literal("The Innocents win!")
 					.formatted(Formatting.GOLD, Formatting.BOLD));
 			GameManager.end(server);
@@ -162,6 +217,7 @@ public final class TaskManager {
 				// A player who joined mid-match. Snapshot them now and count nothing this pass,
 				// so their existing history cannot complete the task for everyone.
 				advancementBaseline.put(player.getUuid(), snapshotAdvancements(server, player));
+				context.addToBaseline(player);
 				continue;
 			}
 			for (AdvancementEntry entry : server.getAdvancementLoader().getAdvancements()) {

@@ -3,6 +3,9 @@ package com.impostorfridays.client.hud;
 import com.impostorfridays.ImpostorFridays;
 import com.impostorfridays.client.ClientGameState;
 import com.impostorfridays.game.Role;
+import com.impostorfridays.net.GameSyncS2C;
+
+import java.util.List;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
@@ -71,14 +74,54 @@ public final class GameHud {
 		panel(ctx, left, 2, left + boxWidth, 16);
 		ctx.drawCenteredTextWithShadow(font, timeText, screenWidth / 2, 6, 0xFFFFFFFF);
 
-		if (!ClientGameState.taskText.isEmpty()) {
-			Text task = ClientGameState.taskComplete
-					? Text.literal("✔ " + ClientGameState.taskText).formatted(Formatting.GREEN)
-					: Text.literal(ClientGameState.taskText).formatted(Formatting.YELLOW);
-			int taskWidth = font.getWidth(task);
-			int taskLeft = (screenWidth - taskWidth - 12) / 2;
-			panel(ctx, taskLeft, 18, taskLeft + taskWidth + 12, 31);
-			ctx.drawCenteredTextWithShadow(font, task, screenWidth / 2, 21, 0xFFFFFFFF);
+		renderTasks(ctx, font, screenWidth);
+	}
+
+	/**
+	 * The objective list under the timer.
+	 *
+	 * <p>Completed objectives stay on screen struck through rather than disappearing, so the
+	 * group can see how far through a set they are at a glance.
+	 */
+	private static void renderTasks(DrawContext ctx, TextRenderer font, int screenWidth) {
+		List<GameSyncS2C.TaskLine> tasks = ClientGameState.tasks;
+		if (tasks.isEmpty()) {
+			return;
+		}
+
+		int done = 0;
+		for (GameSyncS2C.TaskLine line : tasks) {
+			if (line.done()) {
+				done++;
+			}
+		}
+
+		// Build the display lines first so the panel can be sized to the widest one.
+		List<Text> lines = new java.util.ArrayList<>();
+		if (tasks.size() > 1) {
+			lines.add(Text.literal("Objectives  " + done + "/" + tasks.size())
+					.formatted(Formatting.GOLD, Formatting.BOLD));
+		}
+		for (GameSyncS2C.TaskLine line : tasks) {
+			lines.add(line.done()
+					? Text.literal("✔ " + line.text()).formatted(Formatting.GREEN, Formatting.STRIKETHROUGH)
+					: Text.literal("• " + line.text()).formatted(Formatting.YELLOW));
+		}
+
+		int widest = 0;
+		for (Text line : lines) {
+			widest = Math.max(widest, font.getWidth(line));
+		}
+
+		int top = 18;
+		int lineHeight = 11;
+		int boxLeft = (screenWidth - widest - 12) / 2;
+		panel(ctx, boxLeft, top, boxLeft + widest + 12, top + lines.size() * lineHeight + 5);
+
+		int y = top + 4;
+		for (Text line : lines) {
+			ctx.drawCenteredTextWithShadow(font, line, screenWidth / 2, y, 0xFFFFFFFF);
+			y += lineHeight;
 		}
 	}
 

@@ -1,6 +1,9 @@
 package com.impostorfridays.client;
 
 import com.impostorfridays.game.Role;
+import com.impostorfridays.net.GameSyncS2C;
+
+import java.util.List;
 
 /**
  * The client's mirror of server state.
@@ -17,8 +20,8 @@ public final class ClientGameState {
 	public static int snifferCooldownTicks;
 	public static boolean gravityActive;
 	public static int respawnTicks;
-	public static String taskText = "";
-	public static boolean taskComplete;
+	/** Every objective in the current set, with its completion state. */
+	public static List<GameSyncS2C.TaskLine> tasks = List.of();
 
 	/** Wall-clock deadline for the one-shot role announcement overlay. */
 	public static long roleAnnounceUntilMs;
@@ -39,8 +42,7 @@ public final class ClientGameState {
 		snifferCooldownTicks = 0;
 		gravityActive = false;
 		respawnTicks = 0;
-		taskText = "";
-		taskComplete = false;
+		tasks = List.of();
 		roleAnnounceUntilMs = 0;
 		announcedRole = null;
 		sniffCueUntilMs = 0;

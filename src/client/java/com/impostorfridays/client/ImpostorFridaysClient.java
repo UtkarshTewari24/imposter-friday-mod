@@ -54,8 +54,7 @@ public class ImpostorFridaysClient implements ClientModInitializer {
 		ClientGameState.snifferCooldownTicks = payload.snifferCooldownTicks();
 		ClientGameState.gravityActive = payload.gravityActive();
 		ClientGameState.respawnTicks = payload.respawnTicks();
-		ClientGameState.taskText = payload.taskText();
-		ClientGameState.taskComplete = payload.taskComplete();
+		ClientGameState.tasks = payload.tasks();
 
 		if (!payload.active()) {
 			// Clear one-shot overlays too, so /end wipes the screen completely.

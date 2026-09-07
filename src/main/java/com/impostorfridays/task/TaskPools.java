@@ -54,13 +54,13 @@ public final class TaskPools {
 		add(new TaskDefinition("easy_goat_horn", Difficulty.EASY,
 				"Obtain a Goat Horn",
 				"The horn sounds across the hills!",
-				ctx -> ctx.anyPlayerHas(Items.GOAT_HORN)));
+				ctx -> ctx.gained(Items.GOAT_HORN)));
 
 		add(new TaskDefinition("easy_tame", Difficulty.EASY,
 				"Tame an animal, and get a cat and a wolf into the group",
 				"You have companions!",
 				ctx -> ctx.advancementEarned("minecraft:husbandry/tame_an_animal")
-						&& ctx.anyPlayerHas(Items.BONE)));
+						&& ctx.gained(Items.BONE)));
 
 		add(new TaskDefinition("easy_lava_bucket", Difficulty.EASY,
 				"Fill a bucket with lava and smelt iron",
@@ -72,7 +72,7 @@ public final class TaskPools {
 				"Sleep in a bed and bake bread for the group",
 				"Rested and fed!",
 				ctx -> ctx.advancementEarned("minecraft:adventure/sleep_in_bed")
-						&& ctx.totalCount(Items.BREAD) >= 5));
+						&& ctx.gained(Items.BREAD, 5)));
 
 		// ------------------------------------------------------------------
 		// STANDARD — the default 90 minute experience
@@ -87,11 +87,6 @@ public final class TaskPools {
 				"The crew shines!",
 				ctx -> ctx.allInnocentsWearing(Items.DIAMOND_HELMET, Items.DIAMOND_CHESTPLATE,
 						Items.DIAMOND_LEGGINGS, Items.DIAMOND_BOOTS)));
-
-		add(new TaskDefinition("std_full_shulker", Difficulty.STANDARD,
-				"Fill a Shulker Box completely (all 27 slots)",
-				"Packed to the brim!",
-				TaskContext::anyFullShulkerBox));
 
 		add(new TaskDefinition("std_hunt_three", Difficulty.STANDARD,
 				"Hunt an adult Frog, a Polar Bear and a Ravager",
@@ -109,8 +104,8 @@ public final class TaskPools {
 				"Get a creeper to drop a music disc, then play it in a jukebox",
 				"The music plays!",
 				ctx -> ctx.advancementEarned("minecraft:adventure/play_jukebox_in_meadows")
-						|| ctx.anyPlayerHas(Items.MUSIC_DISC_13)
-						|| ctx.anyPlayerHas(Items.MUSIC_DISC_CAT)));
+						|| ctx.gained(Items.MUSIC_DISC_13)
+						|| ctx.gained(Items.MUSIC_DISC_CAT)));
 
 		add(new TaskDefinition("std_ancient_debris", Difficulty.STANDARD,
 				"Find Ancient Debris and brew a potion",
@@ -125,15 +120,30 @@ public final class TaskPools {
 						&& ctx.diedOf("minecraft:out_of_world")
 						&& ctx.diedOf("minecraft:wither")));
 
-		add(new TaskDefinition("std_totem", Difficulty.STANDARD,
-				"Raid a woodland mansion and obtain a Totem of Undying",
-				"Cheating death!",
-				ctx -> ctx.advancementEarned("minecraft:adventure/totem_of_undying")
-						|| ctx.anyPlayerHas(Items.TOTEM_OF_UNDYING)));
+		add(new TaskDefinition("std_cure_villager", Difficulty.STANDARD,
+				"Cure a Zombie Villager",
+				"Brought back from the brink!",
+				ctx -> ctx.advancementEarned("minecraft:story/cure_zombie_villager")));
+
+		add(new TaskDefinition("std_blaze_rods", Difficulty.STANDARD,
+				"Find a Nether Fortress and bring back 3 Blaze Rods",
+				"The fortress has been raided!",
+				ctx -> ctx.advancementEarned("minecraft:nether/obtain_blaze_rod")
+						&& ctx.gained(Items.BLAZE_ROD, 3)));
 
 		// ------------------------------------------------------------------
 		// HARD — each one a single, well-defined, genuinely difficult objective
 		// ------------------------------------------------------------------
+		add(new TaskDefinition("hard_full_shulker", Difficulty.HARD,
+				"Fill a Shulker Box completely (all 27 slots)",
+				"Packed to the brim!",
+				TaskContext::anyFullShulkerBox));
+
+		add(new TaskDefinition("hard_totem", Difficulty.HARD,
+				"Raid a woodland mansion and obtain a Totem of Undying",
+				"Cheating death!",
+				ctx -> ctx.advancementEarned("minecraft:adventure/totem_of_undying")
+						|| ctx.gained(Items.TOTEM_OF_UNDYING)));
 		add(new TaskDefinition("hard_beacon", Difficulty.HARD,
 				"Activate a Beacon",
 				"The beacon pierces the sky!",
@@ -165,15 +175,15 @@ public final class TaskPools {
 				"Find an End City and recover an Elytra",
 				"You have wings!",
 				ctx -> ctx.advancementEarned("minecraft:end/elytra")
-						|| ctx.anyPlayerHas(Items.ELYTRA)));
+						|| ctx.gained(Items.ELYTRA)));
 
 		add(new TaskDefinition("hard_froglights", Difficulty.HARD,
 				"Obtain all three colours of Froglight",
 				"A rainbow from the Nether!",
 				ctx -> ctx.advancementEarned("minecraft:husbandry/froglights")
-						|| (ctx.anyPlayerHas(Items.OCHRE_FROGLIGHT)
-								&& ctx.anyPlayerHas(Items.VERDANT_FROGLIGHT)
-								&& ctx.anyPlayerHas(Items.PEARLESCENT_FROGLIGHT))));
+						|| (ctx.gained(Items.OCHRE_FROGLIGHT)
+								&& ctx.gained(Items.VERDANT_FROGLIGHT)
+								&& ctx.gained(Items.PEARLESCENT_FROGLIGHT))));
 
 		add(new TaskDefinition("hard_all_effects", Difficulty.HARD,
 				"Have every status effect applied at once to a single player",

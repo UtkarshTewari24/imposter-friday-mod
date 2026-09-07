@@ -44,6 +44,8 @@ public final class GameConfig {
 
 	// --- Tasks ---
 	private Difficulty difficulty = Difficulty.STANDARD;
+	/** Either {@link com.impostorfridays.task.TaskSets#RANDOM} or a preset set id. */
+	private String taskSet = com.impostorfridays.task.TaskSets.RANDOM;
 
 	// --- Simple Voice Chat ---
 	/** When true, dead players cannot be heard by (or hear) the living. */
@@ -99,6 +101,7 @@ public final class GameConfig {
 		snifferEnabled = getBool(props, "sniffer.enabled", snifferEnabled);
 		snifferCooldownSeconds = clamp(getInt(props, "sniffer.cooldownSeconds", snifferCooldownSeconds), 0, 3600);
 		difficulty = Difficulty.byName(props.getProperty("task.difficulty", difficulty.name()));
+		setTaskSet(props.getProperty("task.set", taskSet));
 		muteDeadPlayers = getBool(props, "voicechat.muteDead", muteDeadPlayers);
 
 		for (Ability a : Ability.values()) {
@@ -120,6 +123,7 @@ public final class GameConfig {
 		props.setProperty("sniffer.enabled", Boolean.toString(snifferEnabled));
 		props.setProperty("sniffer.cooldownSeconds", Integer.toString(snifferCooldownSeconds));
 		props.setProperty("task.difficulty", difficulty.name());
+		props.setProperty("task.set", taskSet);
 		props.setProperty("voicechat.muteDead", Boolean.toString(muteDeadPlayers));
 		for (Ability a : Ability.values()) {
 			props.setProperty("ability." + a.getId() + ".enabled", Boolean.toString(enabledAbilities.contains(a)));
@@ -206,6 +210,20 @@ public final class GameConfig {
 
 	public Difficulty getDifficulty() {
 		return difficulty;
+	}
+
+	public String getTaskSet() {
+		return taskSet;
+	}
+
+	/** Accepts a known set id or anything meaning RANDOM; unknown ids fall back to RANDOM. */
+	public void setTaskSet(String value) {
+		if (com.impostorfridays.task.TaskSets.isRandom(value)
+				|| com.impostorfridays.task.TaskSets.byId(value) == null) {
+			this.taskSet = com.impostorfridays.task.TaskSets.RANDOM;
+		} else {
+			this.taskSet = com.impostorfridays.task.TaskSets.byId(value).id();
+		}
 	}
 
 	public void setDifficulty(Difficulty d) {

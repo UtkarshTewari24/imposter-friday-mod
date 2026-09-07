@@ -37,9 +37,8 @@ public final class GameManager {
 	private static GameState state;
 	private static int syncCounter;
 
-	/** Shared task description, driven by the task system. */
-	private static String taskText = "";
-	private static boolean taskComplete;
+	/** The current objectives and their completion state, driven by the task system. */
+	private static List<GameSyncS2C.TaskLine> taskLines = List.of();
 
 	private static final Random RANDOM = new Random();
 
@@ -77,7 +76,7 @@ public final class GameManager {
 		GameConfig cfg = GameConfig.get();
 		state = new GameState(cfg.getGameLengthTicks());
 		syncCounter = 0;
-		taskComplete = false;
+		taskLines = List.of();
 
 		// Deaths must never cost anyone their gear.
 		enforceKeepInventory(server);
@@ -144,8 +143,7 @@ public final class GameManager {
 		TaskManager.end();
 
 		state = null;
-		taskText = "";
-		taskComplete = false;
+		taskLines = List.of();
 		syncCounter = 0;
 
 		// Push the cleared state so every HUD overlay disappears.
@@ -208,8 +206,7 @@ public final class GameManager {
 	/** Pushes this player's own view of the game. Never includes anyone else's role. */
 	public static void syncTo(ServerPlayerEntity player) {
 		if (!isActive()) {
-			ServerPlayNetworking.send(player,
-					new GameSyncS2C(false, 0, Role.INNOCENT.ordinal(), 0, 0, false, 0, "", false));
+			ServerPlayNetworking.send(player, GameSyncS2C.inactive());
 			return;
 		}
 
@@ -225,8 +222,7 @@ public final class GameManager {
 				sniffer ? state.getSnifferCooldownTicks() : 0,
 				!impostor && state.isEffectActive(Ability.GRAVITY),
 				state.getRespawnTicks(id),
-				taskText,
-				taskComplete
+				taskLines
 		));
 	}
 
@@ -256,19 +252,12 @@ public final class GameManager {
 		}
 	}
 
-	public static String getTaskText() {
-		return taskText;
+	public static List<GameSyncS2C.TaskLine> getTaskLines() {
+		return taskLines;
 	}
 
-	public static void setTaskText(String text) {
-		taskText = text == null ? "" : text;
-	}
-
-	public static boolean isTaskComplete() {
-		return taskComplete;
-	}
-
-	public static void setTaskComplete(boolean complete) {
-		taskComplete = complete;
+	/** Replaces the objective list shown on every player's HUD. */
+	public static void setTaskLines(List<GameSyncS2C.TaskLine> lines) {
+		taskLines = lines == null ? List.of() : List.copyOf(lines);
 	}
 }
