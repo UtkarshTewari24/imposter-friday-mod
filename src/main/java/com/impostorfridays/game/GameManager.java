@@ -192,6 +192,19 @@ public final class GameManager {
 	// Sync
 	// ------------------------------------------------------------------
 
+	/**
+	 * Re-shows a player their own role after a reconnect.
+	 *
+	 * <p>The reveal is a one-shot at /start, so without this someone who crashes and rejoins has
+	 * no way at all to find out what they are.
+	 */
+	public static void resendRoleTo(ServerPlayerEntity player) {
+		if (!isActive()) {
+			return;
+		}
+		ServerPlayNetworking.send(player, new RoleAnnounceS2C(state.getRole(player.getUuid()).ordinal()));
+	}
+
 	/** Pushes this player's own view of the game. Never includes anyone else's role. */
 	public static void syncTo(ServerPlayerEntity player) {
 		if (!isActive()) {

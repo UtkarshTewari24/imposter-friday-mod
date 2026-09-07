@@ -55,8 +55,14 @@ public class ImpostorFridays implements ModInitializer {
 				DeathManager.onRespawn(newPlayer));
 
 		// Bring joining players in line with the current match (or clear their HUD if none).
-		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
-				GameManager.syncTo(handler.getPlayer()));
+		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+			GameManager.syncTo(handler.getPlayer());
+			GameManager.resendRoleTo(handler.getPlayer());
+			AbilityManager.onPlayerJoin(server, handler.getPlayer());
+		});
+
+		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
+				AbilityManager.onPlayerDisconnect(handler.getPlayer()));
 
 		MixinAudit.runIfDevelopment();
 

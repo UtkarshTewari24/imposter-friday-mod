@@ -16,7 +16,10 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.UUID;
 import java.util.Set;
 
 /**
@@ -37,7 +40,14 @@ public final class TaskManager {
 
 	private static TaskContext context;
 	private static TaskDefinition activeTask;
-	private static Set<String> advancementBaseline = new HashSet<>();
+	/**
+	 * Per-player snapshot of advancements already earned before this match counted.
+	 *
+	 * <p>Keyed by player because a player who joins mid-match brings their own history with them.
+	 * A single shared baseline taken at /start would treat every advancement a late joiner
+	 * already had as "newly earned", instantly completing tasks like "enter the Nether".
+	 */
+	private static Map<UUID, Set<String>> advancementBaseline = new HashMap<>();
 	private static int tickCounter;
 	private static boolean completed;
 
@@ -65,7 +75,10 @@ public final class TaskManager {
 			return;
 		}
 
-		advancementBaseline = snapshotAdvancements(server);
+		advancementBaseline = new HashMap<>();
+		for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+			advancementBaseline.put(player.getUuid(), snapshotAdvancements(server, player));
+		}
 		GameManager.setTaskText(activeTask.description());
 		GameManager.setTaskComplete(false);
 
@@ -76,19 +89,17 @@ public final class TaskManager {
 	public static void end() {
 		context = null;
 		activeTask = null;
-		advancementBaseline = new HashSet<>();
+		advancementBaseline = new HashMap<>();
 		completed = false;
 		tickCounter = 0;
 	}
 
-	/** Every advancement any player has already completed, so prior rounds do not count. */
-	private static Set<String> snapshotAdvancements(MinecraftServer server) {
+	/** Everything this player had already completed, so prior rounds never count. */
+	private static Set<String> snapshotAdvancements(MinecraftServer server, ServerPlayerEntity player) {
 		Set<String> done = new HashSet<>();
-		for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-			for (AdvancementEntry entry : server.getAdvancementLoader().getAdvancements()) {
-				if (player.getAdvancementTracker().getProgress(entry).isDone()) {
-					done.add(entry.id().toString());
-				}
+		for (AdvancementEntry entry : server.getAdvancementLoader().getAdvancements()) {
+			if (player.getAdvancementTracker().getProgress(entry).isDone()) {
+				done.add(entry.id().toString());
 			}
 		}
 		return done;
@@ -146,9 +157,16 @@ public final class TaskManager {
 	/** Adds advancements completed since the match began. */
 	private static void refreshAdvancements(MinecraftServer server) {
 		for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+			Set<String> baseline = advancementBaseline.get(player.getUuid());
+			if (baseline == null) {
+				// A player who joined mid-match. Snapshot them now and count nothing this pass,
+				// so their existing history cannot complete the task for everyone.
+				advancementBaseline.put(player.getUuid(), snapshotAdvancements(server, player));
+				continue;
+			}
 			for (AdvancementEntry entry : server.getAdvancementLoader().getAdvancements()) {
 				String id = entry.id().toString();
-				if (advancementBaseline.contains(id) || context.newAdvancements.contains(id)) {
+				if (baseline.contains(id) || context.newAdvancements.contains(id)) {
 					continue;
 				}
 				if (player.getAdvancementTracker().getProgress(entry).isDone()) {

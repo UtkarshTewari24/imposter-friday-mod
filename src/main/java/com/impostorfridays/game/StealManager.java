@@ -131,22 +131,35 @@ public final class StealManager {
 				continue;
 			}
 
+			// Diff the snapshot against itself, NOT against the live inventory: the target is
+			// still playing, and may have picked up or used items while the window was open.
+			ItemStack original = handler.getOriginalStack(chestSlot);
 			ItemStack remaining = view.getStack(chestSlot);
-			ItemStack original = targetInv.getStack(targetSlot);
 			if (original.isEmpty()) {
 				continue;
 			}
 
 			int taken = original.getCount() - (remaining.isEmpty() ? 0 : remaining.getCount());
-			if (taken > 0) {
-				original.decrement(taken);
-				if (original.isEmpty()) {
-					targetInv.setStack(targetSlot, ItemStack.EMPTY);
-				}
-				target.currentScreenHandler.sendContentUpdates();
-				// Exactly one stack, then stop — the hard limit the spec requires.
-				return;
+			if (taken <= 0) {
+				continue;
 			}
+
+			ItemStack live = targetInv.getStack(targetSlot);
+			// If the target has since emptied or replaced that slot, take nothing rather than
+			// removing whatever happens to be sitting there now.
+			if (live.isEmpty() || !ItemStack.areItemsAndComponentsEqual(live, original)) {
+				continue;
+			}
+
+			// Never remove more than is actually there.
+			int toRemove = Math.min(taken, live.getCount());
+			live.decrement(toRemove);
+			if (live.isEmpty()) {
+				targetInv.setStack(targetSlot, ItemStack.EMPTY);
+			}
+			target.currentScreenHandler.sendContentUpdates();
+			// Exactly one stack, then stop — the hard limit the spec requires.
+			return;
 		}
 	}
 }

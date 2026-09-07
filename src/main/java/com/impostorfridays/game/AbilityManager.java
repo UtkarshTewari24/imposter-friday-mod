@@ -145,16 +145,49 @@ public final class AbilityManager {
 		broadcastEquipment(server, impostor, false);
 	}
 
-	/** Sends either blanked-out or real equipment for this player to everyone else. */
-	private static void broadcastEquipment(MinecraftServer server, ServerPlayerEntity subject,
+	/**
+	 * Brings a player who just joined in line with any effect already running.
+	 *
+	 * <p>Without this, someone joining mid-{@code /invis} receives the Impostor's real equipment
+	 * with their normal spawn packets and sees floating armour — which would out the Impostor.
+	 */
+	public static void onPlayerJoin(MinecraftServer server, ServerPlayerEntity joiner) {
+		GameState state = GameManager.getState();
+		if (state == null || !state.isEffectActive(Ability.INVIS) || state.getImpostorId() == null) {
+			return;
+		}
+		ServerPlayerEntity impostor = server.getPlayerManager().getPlayer(state.getImpostorId());
+		if (impostor != null && impostor != joiner) {
+			joiner.networkHandler.sendPacket(equipmentPacket(impostor, true));
+		}
+	}
+
+	/** Clears anything that would otherwise be left stuck on a player who left. */
+	public static void onPlayerDisconnect(ServerPlayerEntity leaver) {
+		GameState state = GameManager.getState();
+		if (state == null) {
+			return;
+		}
+		// Don't leave them flagged dead — otherwise the respawn gate and voice muting would
+		// still apply to them the moment they reconnect.
+		state.clearDead(leaver.getUuid());
+		NametagHider.show(leaver);
+	}
+
+	private static EntityEquipmentUpdateS2CPacket equipmentPacket(ServerPlayerEntity subject,
 			boolean blank) {
 		List<Pair<EquipmentSlot, ItemStack>> equipment = new ArrayList<>();
 		for (EquipmentSlot slot : EquipmentSlot.values()) {
 			ItemStack stack = blank ? ItemStack.EMPTY : subject.getEquippedStack(slot);
 			equipment.add(new Pair<>(slot, stack.copy()));
 		}
-		EntityEquipmentUpdateS2CPacket packet =
-				new EntityEquipmentUpdateS2CPacket(subject.getId(), equipment);
+		return new EntityEquipmentUpdateS2CPacket(subject.getId(), equipment);
+	}
+
+	/** Sends either blanked-out or real equipment for this player to everyone else. */
+	private static void broadcastEquipment(MinecraftServer server, ServerPlayerEntity subject,
+			boolean blank) {
+		EntityEquipmentUpdateS2CPacket packet = equipmentPacket(subject, blank);
 
 		for (ServerPlayerEntity viewer : server.getPlayerManager().getPlayerList()) {
 			if (viewer != subject) {

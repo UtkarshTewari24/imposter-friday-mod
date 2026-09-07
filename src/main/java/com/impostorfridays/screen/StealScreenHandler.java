@@ -15,6 +15,7 @@ import net.minecraft.component.DataComponentTypes;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -43,6 +44,15 @@ public class StealScreenHandler extends GenericContainerScreenHandler {
 	/** Chest slots that must never be interactive (filler, and the locked compass). */
 	private final java.util.Set<Integer> lockedSlots;
 
+	/**
+	 * Immutable copy of what each mapped slot held when the window opened.
+	 *
+	 * <p>Reconciliation must diff against THIS, not against the target's live inventory — the
+	 * target is still playing and may pick up or use items while the window is open. Diffing
+	 * against the live stack would remove the wrong amount in both directions.
+	 */
+	private final Map<Integer, ItemStack> originalStacks = new HashMap<>();
+
 	/** Once one stack has been taken, every further steal is refused. */
 	private boolean stealUsed;
 
@@ -53,6 +63,16 @@ public class StealScreenHandler extends GenericContainerScreenHandler {
 		this.slotMapping = slotMapping;
 		this.lockedSlots = lockedSlots;
 		this.targetId = targetId;
+
+		// The view is an untouched snapshot at construction time, so copy it now.
+		for (Integer chestSlot : slotMapping.keySet()) {
+			originalStacks.put(chestSlot, view.getStack(chestSlot).copy());
+		}
+	}
+
+	/** What this slot held when the window opened. Never null for a mapped slot. */
+	public ItemStack getOriginalStack(int chestSlot) {
+		return originalStacks.getOrDefault(chestSlot, ItemStack.EMPTY);
 	}
 
 	public UUID getTargetId() {

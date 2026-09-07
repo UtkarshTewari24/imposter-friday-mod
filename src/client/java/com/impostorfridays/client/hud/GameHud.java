@@ -33,12 +33,17 @@ public final class GameHud {
 				Identifier.of(ImpostorFridays.MOD_ID, "cooldown"), GameHud::renderCooldown);
 	}
 
-	/** Whether HUD overlays should draw at all right now. */
+	/**
+	 * Whether HUD overlays should draw at all right now.
+	 *
+	 * <p>Deliberately does NOT check for an open screen: the spec requires the timer to be
+	 * visible at all times during a match, including while someone is in their inventory or in
+	 * the /steal container.
+	 */
 	private static boolean shouldRender(MinecraftClient client) {
 		return ClientGameState.active
 				&& client.player != null
-				&& !client.options.hudHidden
-				&& client.currentScreen == null;
+				&& !client.options.hudHidden;
 	}
 
 	// ------------------------------------------------------------------
