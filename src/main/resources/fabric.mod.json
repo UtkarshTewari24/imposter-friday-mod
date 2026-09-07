@@ -18,6 +18,9 @@
 		],
 		"client": [
 			"com.impostorfridays.client.ImpostorFridaysClient"
+		],
+		"voicechat": [
+			"com.impostorfridays.voice.ImpostorVoicechatPlugin"
 		]
 	},
 	"mixins": [

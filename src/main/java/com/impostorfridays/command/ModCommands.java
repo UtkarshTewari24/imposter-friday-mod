@@ -18,6 +18,7 @@ public final class ModCommands {
 			registerLifecycle(dispatcher);
 			SetupCommand.register(dispatcher);
 			AbilityCommands.register(dispatcher);
+			ResetCommand.register(dispatcher);
 		});
 	}
 

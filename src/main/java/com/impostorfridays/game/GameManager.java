@@ -139,6 +139,7 @@ public final class GameManager {
 			clearPlayerEffects(p);
 		}
 
+		TrackingManager.removeAllCompasses(server);
 		TrackingManager.clear();
 		TaskManager.end();
 

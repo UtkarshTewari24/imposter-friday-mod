@@ -188,6 +188,25 @@ public final class TrackingManager {
 		}
 	}
 
+	/**
+	 * Removes every Tracking Compass from every player.
+	 *
+	 * <p>Called on {@code /end}. Without this a previous round's Impostor would still be
+	 * holding a compass during the next match — both a role leak and a source of confusion.
+	 * This is the only inventory change {@code /end} makes, and it only ever removes a mod
+	 * item, never anything the players found or built.
+	 */
+	public static void removeAllCompasses(MinecraftServer server) {
+		for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+			var inventory = player.getInventory();
+			for (int i = 0; i < inventory.size(); i++) {
+				if (inventory.getStack(i).isOf(ModItems.TRACKING_COMPASS)) {
+					inventory.setStack(i, ItemStack.EMPTY);
+				}
+			}
+		}
+	}
+
 	/** Gives the holder a Tracking Compass if they don't already have one. */
 	public static void giveCompass(ServerPlayerEntity player) {
 		var inventory = player.getInventory();
