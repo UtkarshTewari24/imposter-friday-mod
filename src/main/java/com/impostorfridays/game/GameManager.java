@@ -132,6 +132,7 @@ public final class GameManager {
 			return;
 		}
 		// Undo anything that would otherwise outlive the match.
+		AbilityManager.cleanupAll(server);
 		for (ServerPlayerEntity p : server.getPlayerManager().getPlayerList()) {
 			clearPlayerEffects(p);
 		}

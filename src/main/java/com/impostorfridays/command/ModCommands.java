@@ -17,6 +17,7 @@ public final class ModCommands {
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
 			registerLifecycle(dispatcher);
 			SetupCommand.register(dispatcher);
+			AbilityCommands.register(dispatcher);
 		});
 	}
 

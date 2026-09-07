@@ -2,7 +2,9 @@
 	"required": true,
 	"package": "com.impostorfridays.client.mixin",
 	"compatibilityLevel": "JAVA_21",
-	"client": [],
+	"client": [
+		"DeathScreenMixin"
+	],
 	"injectors": {
 		"defaultRequire": 1
 	}

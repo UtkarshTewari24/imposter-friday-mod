@@ -39,6 +39,8 @@ public class ImpostorFridaysClient implements ClientModInitializer {
 		// Never let stale overlays survive a disconnect.
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> ClientGameState.reset());
 
+		MixinAudit.runIfDevelopment();
+
 		ImpostorFridays.LOGGER.info("Impostor Fridays client initialized");
 	}
 
