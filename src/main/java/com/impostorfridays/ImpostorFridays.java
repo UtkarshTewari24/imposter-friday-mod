@@ -1,6 +1,12 @@
 package com.impostorfridays;
 
+import com.impostorfridays.command.ModCommands;
+import com.impostorfridays.config.GameConfig;
+import com.impostorfridays.game.GameManager;
+import com.impostorfridays.net.ModNetworking;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,6 +22,16 @@ public class ImpostorFridays implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-		LOGGER.info("Impostor Fridays initializing (common)");
+		GameConfig.get();
+		ModNetworking.registerCommon();
+		ModCommands.register();
+
+		ServerTickEvents.END_SERVER_TICK.register(GameManager::tick);
+
+		// Bring joining players in line with the current match (or clear their HUD if none).
+		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
+				GameManager.syncTo(handler.getPlayer()));
+
+		LOGGER.info("Impostor Fridays initialized");
 	}
 }
