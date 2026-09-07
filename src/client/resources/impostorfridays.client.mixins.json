@@ -3,6 +3,7 @@
 	"package": "com.impostorfridays.client.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
+		"CameraMixin",
 		"DeathScreenMixin"
 	],
 	"injectors": {
