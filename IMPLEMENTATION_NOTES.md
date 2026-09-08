@@ -12,7 +12,7 @@ per Section 0 of the spec.
 | Component | Version | How it was confirmed |
 |---|---|---|
 | Minecraft | `1.21.11` | present and stable in `meta.fabricmc.net/v2/versions/game` |
-| Fabric Loader | `0.19.5` | current stable from `meta.fabricmc.net/v2/versions/loader` |
+| Fabric Loader | built against `0.19.5`, **requires `>=0.17.3`** | current stable from `meta.fabricmc.net/v2/versions/loader`; the floor matches Fabric API's own requirement (see below) |
 | Yarn mappings | `1.21.11+build.6` | latest stable build for 1.21.11 |
 | Fabric Loom | `1.17.20` | latest **stable** on `maven.fabricmc.net` (1.18.0-alpha.* exist but are alphas) |
 | Fabric API | `0.141.6+1.21.11` | latest for 1.21.11; matches the version named in the spec |

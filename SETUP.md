@@ -30,7 +30,9 @@ Get these four things first. Keep them all in one folder so you can find them.
 > file** and the **same Impostor Fridays file**. Not "both 1.21.11" — literally the same downloads.
 > The easiest way is for the host to send everyone the exact files they used.
 >
-> The Fabric *Loader* version does not need to match exactly. Fabric API and the mod jar do.
+> The Fabric *Loader* version does not need to match: the mod accepts **0.17.3 or newer**, which is
+> deliberately loose so it still runs if your launcher ships an older loader. Fabric API and the mod
+> jar do need to match exactly.
 
 ---
 

@@ -77,7 +77,10 @@ This adds proximity voice chat, which makes the game *much* better. The mod work
 > **The easy way:** whoever hosts downloads all three files once, then sends those exact files to
 > everyone in a Discord chat. Everyone uses those.
 >
-> The Fabric *Loader* version does **not** need to match. Fabric API and the mod jar **do**.
+> The Fabric *Loader* version does **not** need to match. The mod works on **Fabric Loader 0.17.3
+> or newer**, which is deliberately loose so it still runs if your launcher ships an older loader —
+> Lunar Client's Fabric add-on often lags a little behind. Fabric API and the mod jar **do** need
+> to match exactly.
 
 ---
 
