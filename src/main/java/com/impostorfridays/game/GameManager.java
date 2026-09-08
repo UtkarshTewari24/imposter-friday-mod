@@ -80,6 +80,8 @@ public final class GameManager {
 
 		// Deaths must never cost anyone their gear.
 		enforceKeepInventory(server);
+		// Clear any nametag hiding left over from a previous match or an unclean shutdown.
+		NametagHider.reset(server);
 
 		assignRoles(players, cfg);
 

@@ -61,12 +61,27 @@ public final class DeathManager {
 		GameManager.syncTo(player);
 	}
 
-	/** Keeps dead players' HUD countdown ticking. */
+	/** How often a dead player's respawn countdown is re-sent. */
+	private static final int RESPAWN_SYNC_INTERVAL = 5;
+
+	private static int syncCounter;
+
+	/**
+	 * Keeps dead players' respawn countdown ticking.
+	 *
+	 * <p>Throttled: the button only ever displays whole seconds, so re-sending every tick was
+	 * twenty packets per second per dead player for no visible benefit.
+	 */
 	public static void tick(MinecraftServer server) {
 		GameState state = GameManager.getState();
 		if (state == null || state.getRespawnTimers().isEmpty()) {
+			syncCounter = 0;
 			return;
 		}
+		if (++syncCounter < RESPAWN_SYNC_INTERVAL) {
+			return;
+		}
+		syncCounter = 0;
 		for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
 			if (state.isDead(player.getUuid())) {
 				GameManager.syncTo(player);

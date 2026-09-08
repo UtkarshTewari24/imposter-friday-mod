@@ -202,6 +202,19 @@ Turn the Sniffer on in `/amongussetup` first. It needs at least 3 players.
 
 ---
 
+## Test 7b — Reconnecting and leaving
+
+These cover bugs found by audit rather than by play, so they are worth a few minutes.
+
+- [ ] 7b.1 During a match, **disconnect and reconnect**. Your role is shown to you again
+- [ ] 7b.2 The timer and objectives reappear correctly
+- [ ] 7b.3 If you were the Impostor, you still have your compass and your cooldown is unchanged
+- [ ] 7b.4 Have the Impostor use `/invis`, then **disconnect and reconnect while it is still running**. Other players still cannot see their armour or held item
+- [ ] 7b.5 Have someone join **mid-match** while `/invis` is active. They cannot see the Impostor's equipment either
+- [ ] 7b.6 Die, and **disconnect while still dead**. Reconnect — you are alive and not stuck on a respawn timer
+- [ ] 7b.7 Run `/end`, then have a player who was **offline** at that moment log in. They do **not** have a Tracking Compass
+- [ ] 7b.8 Use `/blind`, then **stop the server** while it is still running (`stop` in the console). Start it again — nametags are visible normally, not stuck hidden
+
 ## Test 8 — Full playtest (6+ players, a real 90-minute game)
 
 This is about whether it's *fun*, not whether it works.

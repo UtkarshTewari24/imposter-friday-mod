@@ -207,6 +207,26 @@ public final class TrackingManager {
 		}
 	}
 
+	/**
+	 * Strips Tracking Compasses from one player unless they are the current Impostor.
+	 *
+	 * <p>{@code /end} can only clear compasses from players who are online. Someone who was
+	 * offline at the time would still be carrying one when they next log in — and if they are
+	 * not the Impostor that round, it both leaks and confuses. Checked on every join.
+	 */
+	public static void stripCompassUnlessImpostor(ServerPlayerEntity player) {
+		GameState state = GameManager.getState();
+		if (state != null && state.isImpostor(player.getUuid())) {
+			return;
+		}
+		var inventory = player.getInventory();
+		for (int i = 0; i < inventory.size(); i++) {
+			if (inventory.getStack(i).isOf(ModItems.TRACKING_COMPASS)) {
+				inventory.setStack(i, ItemStack.EMPTY);
+			}
+		}
+	}
+
 	/** Gives the holder a Tracking Compass if they don't already have one. */
 	public static void giveCompass(ServerPlayerEntity player) {
 		var inventory = player.getInventory();

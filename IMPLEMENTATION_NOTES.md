@@ -178,7 +178,24 @@ Two tasks were also re-tiered after checking what they actually require: filling
 needs End City shells, and a woodland mansion can be thousands of blocks away. Both moved from
 STANDARD to HARD.
 
-## 5. Known tradeoffs
+## 5. Bugs found by auditing, and what they teach
+
+Beyond the nine fixed in the first audit pass, a second pass found four more. Three share a theme
+worth stating plainly: **state that outlives the thing that created it**.
+
+| Bug | Why it mattered |
+|---|---|
+| The hidden-nametag scoreboard team is saved with the world | If the server was killed mid-match, everyone hidden by `/blind` or `/invis` stayed on that team — nametags hidden **permanently, across restarts**, with nothing in game to explain why. Now deleted on server start and again at `/start`. |
+| `/end` could only clear compasses from players who were online | Someone offline at the time still had a Tracking Compass when they next logged in. Now checked on every join. |
+| The Impostor reconnecting mid-`/invis` became visible again | Everyone else's client receives their real equipment with the spawn packets. Now re-blanked on their rejoin. |
+| Dead players were re-synced every tick | Twenty packets per second per dead player, for a countdown that only ever shows whole seconds. Throttled to four. |
+
+The pattern to watch for in this codebase: anything written to the **world save** (scoreboard teams,
+game rules) or held on **other players' clients** (equipment packets) is not cleared by setting
+`state = null`. It needs explicit teardown, and teardown that only runs for online players is not
+teardown.
+
+## 6. Known tradeoffs
 
 ### Admins are identified by username, not UUID
 Per the spec, `Permissions.ADMIN_USERNAMES` holds `MrBoombox840` and `SpeedTellyYT` as **usernames**.
@@ -205,7 +222,7 @@ loss in the gap between rounds.
 
 ---
 
-## 6. What has and has not been verified
+## 7. What has and has not been verified
 
 **Verified automatically:**
 - Compiles cleanly; `runServer` and `runClient` both launch with zero errors

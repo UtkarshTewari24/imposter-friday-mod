@@ -5,6 +5,7 @@ import com.impostorfridays.config.GameConfig;
 import com.impostorfridays.game.AbilityManager;
 import com.impostorfridays.game.DeathManager;
 import com.impostorfridays.game.GameManager;
+import com.impostorfridays.game.NametagHider;
 import com.impostorfridays.game.TrackingManager;
 import com.impostorfridays.item.ModItems;
 import com.impostorfridays.net.ModNetworking;
@@ -13,6 +14,7 @@ import com.impostorfridays.net.ServerNetworkHandlers;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import org.slf4j.Logger;
@@ -36,6 +38,10 @@ public class ImpostorFridays implements ModInitializer {
 		ServerNetworkHandlers.register();
 		ModCommands.register();
 
+		// Scoreboard teams persist in the world save, so clear any left behind by a crash
+		// before someone's nametag stays hidden forever.
+		ServerLifecycleEvents.SERVER_STARTED.register(NametagHider::reset);
+
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
 			GameManager.tick(server);
 			TrackingManager.tick(server);
@@ -56,6 +62,7 @@ public class ImpostorFridays implements ModInitializer {
 
 		// Bring joining players in line with the current match (or clear their HUD if none).
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+			TrackingManager.stripCompassUnlessImpostor(handler.getPlayer());
 			GameManager.syncTo(handler.getPlayer());
 			GameManager.resendRoleTo(handler.getPlayer());
 			AbilityManager.onPlayerJoin(server, handler.getPlayer());

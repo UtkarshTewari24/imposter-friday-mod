@@ -157,7 +157,14 @@ public final class AbilityManager {
 			return;
 		}
 		ServerPlayerEntity impostor = server.getPlayerManager().getPlayer(state.getImpostorId());
-		if (impostor != null && impostor != joiner) {
+		if (impostor == null) {
+			return;
+		}
+		if (impostor == joiner) {
+			// The Impostor themselves reconnected mid-effect: everyone else's client has just
+			// been handed their real equipment with the spawn packets, so blank it again.
+			broadcastEquipment(server, impostor, true);
+		} else {
 			joiner.networkHandler.sendPacket(equipmentPacket(impostor, true));
 		}
 	}
