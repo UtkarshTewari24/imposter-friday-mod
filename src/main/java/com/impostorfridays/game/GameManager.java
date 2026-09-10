@@ -82,6 +82,7 @@ public final class GameManager {
 		enforceKeepInventory(server);
 		// Clear any nametag hiding left over from a previous match or an unclean shutdown.
 		NametagHider.reset(server);
+		resetAdvancementsIfConfigured(server, cfg);
 
 		assignRoles(players, cfg);
 
@@ -130,6 +131,18 @@ public final class GameManager {
 	 *
 	 * <p>Safe to call with no game running. Explicitly does NOT touch inventories or the world.
 	 */
+	/** Ends the match, recording who won so the end-of-game reveal can say so. */
+	public static void endWithWinner(MinecraftServer server, boolean innocentsWon) {
+		lastWinnerWasInnocents = innocentsWon;
+		end(server);
+	}
+
+	private static boolean lastWinnerWasInnocents;
+
+	public static boolean didInnocentsWin() {
+		return lastWinnerWasInnocents;
+	}
+
 	public static void end(MinecraftServer server) {
 		if (!isActive()) {
 			return;
@@ -231,6 +244,22 @@ public final class GameManager {
 	// ------------------------------------------------------------------
 	// Helpers
 	// ------------------------------------------------------------------
+
+	/**
+	 * Revokes every advancement so objectives cannot be pre-completed.
+	 *
+	 * <p>The task system already baselines advancements per player, so this is belt-and-braces —
+	 * but it also makes the five-advancement format feel right, since players actually re-earn
+	 * the toasts during the match. Destructive to progression, hence the config toggle.
+	 */
+	private static void resetAdvancementsIfConfigured(MinecraftServer server, GameConfig cfg) {
+		if (!cfg.isResetAdvancementsOnStart()) {
+			return;
+		}
+		server.getCommandManager().parseAndExecute(
+				server.getCommandSource().withSilent(), "advancement revoke @a everything");
+		ImpostorFridays.LOGGER.info("Revoked all advancements for a clean start");
+	}
 
 	/**
 	 * Guarantees nobody loses items on death.

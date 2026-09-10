@@ -20,7 +20,7 @@ class GameConfigTest {
 		original.setImpostorCooldownSeconds(240);
 		original.setSnifferEnabled(false);
 		original.setSnifferCooldownSeconds(120);
-		original.setDifficulty(Difficulty.HARD);
+		original.setDifficulty(Difficulty.MASTER);
 		original.setMuteDeadPlayers(true);
 		original.setAbilityEnabled(Ability.GRAVITY, false);
 		original.setAbilityDurationSeconds(Ability.BLIND, 45);
@@ -35,7 +35,7 @@ class GameConfigTest {
 		assertEquals(240, loaded.getImpostorCooldownSeconds());
 		assertFalse(loaded.isSnifferEnabled());
 		assertEquals(120, loaded.getSnifferCooldownSeconds());
-		assertEquals(Difficulty.HARD, loaded.getDifficulty());
+		assertEquals(Difficulty.MASTER, loaded.getDifficulty());
 		assertTrue(loaded.isMuteDeadPlayers());
 		assertFalse(loaded.isAbilityEnabled(Ability.GRAVITY));
 		assertTrue(loaded.isAbilityEnabled(Ability.BLIND));
@@ -66,19 +66,14 @@ class GameConfigTest {
 	}
 
 	@Test
-	void taskSetRoundTripsAndRejectsUnknownIds() {
-		GameConfig cfg = new GameConfig();
-		cfg.setTaskSet("set3");
-		assertEquals("set3", cfg.getTaskSet());
-
-		Properties saved = cfg.writeTo();
-		GameConfig loaded = new GameConfig();
-		loaded.readFrom(saved);
-		assertEquals("set3", loaded.getTaskSet());
-
-		// A hand-edited file naming a set that doesn't exist must not break the game.
-		cfg.setTaskSet("does_not_exist");
-		assertEquals("RANDOM", cfg.getTaskSet(), "unknown set ids fall back to RANDOM");
+	void everyDifficultyRoundTrips() {
+		for (Difficulty d : Difficulty.values()) {
+			GameConfig cfg = new GameConfig();
+			cfg.setDifficulty(d);
+			GameConfig loaded = new GameConfig();
+			loaded.readFrom(cfg.writeTo());
+			assertEquals(d, loaded.getDifficulty(), d + " should survive a save/load round trip");
+		}
 	}
 
 	@Test

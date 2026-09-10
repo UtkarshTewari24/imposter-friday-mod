@@ -28,7 +28,8 @@ public final class MixinAudit {
 
 	private static final List<Supplier<Class<?>>> TARGETS = List.of(
 			() -> net.minecraft.entity.damage.DamageTracker.class,
-			() -> net.minecraft.server.network.ServerPlayNetworkHandler.class
+			() -> net.minecraft.server.network.ServerPlayNetworkHandler.class,
+			() -> net.minecraft.entity.passive.MerchantEntity.class
 	);
 
 	private MixinAudit() {

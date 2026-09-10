@@ -1,226 +1,161 @@
 package com.impostorfridays.task;
 
-import net.minecraft.item.Items;
+import com.impostorfridays.task.pool.AdvancedTasks;
+import com.impostorfridays.task.pool.AdvancementPools;
+import com.impostorfridays.task.pool.BeginnerTasks;
+import com.impostorfridays.task.pool.ExpertTasks;
+import com.impostorfridays.task.pool.MasterTasks;
+import com.impostorfridays.task.pool.StandardTasks;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 /**
- * The task catalogue, one pool per difficulty.
+ * The task catalogue and the objective generator.
  *
- * <p>Design bar, per spec: favour real Minecraft progression over "collect N of item X", and
- * prefer objectives that stay hard even when players already have gear from earlier rounds on
- * the same world. Several tasks deliberately span multiple biomes or dimensions so the group
- * has to split up and regroup — that separation is what creates the suspicion the mod is for.
- *
- * <p>Every advancement id below was checked against the real 1.21.11 server data pack.
+ * <p>On {@code /start} one of three formats is chosen at random: three sub-tasks, one major
+ * objective, or five advancements.
  */
 public final class TaskPools {
 
-	private static final Map<Difficulty, List<TaskDefinition>> POOLS = new EnumMap<>(Difficulty.class);
+	private static final Map<Difficulty, List<TaskDefinition>> SUBS = new EnumMap<>(Difficulty.class);
+	private static final Map<Difficulty, List<TaskDefinition>> MAJORS = new EnumMap<>(Difficulty.class);
+
 	private static final Random RANDOM = new Random();
 
 	private TaskPools() {
 	}
 
 	static {
-		// ------------------------------------------------------------------
-		// EASY — achievable by a group that is still finding its feet
-		// ------------------------------------------------------------------
-		add(new TaskDefinition("easy_breed_three", Difficulty.EASY,
-				"Breed a Cow, a Pig and a Chicken",
-				"The farm is thriving!",
-				ctx -> ctx.allBred("minecraft:cow", "minecraft:pig", "minecraft:chicken")));
-
-		add(new TaskDefinition("easy_iron_everyone", Difficulty.EASY,
-				"Everyone (except the Impostor) wears full iron armour",
-				"The whole crew is armoured up!",
-				ctx -> ctx.allInnocentsWearing(Items.IRON_HELMET, Items.IRON_CHESTPLATE,
-						Items.IRON_LEGGINGS, Items.IRON_BOOTS)));
-
-		add(new TaskDefinition("easy_enchant", Difficulty.EASY,
-				"Enchant an item at an enchanting table",
-				"The table hums with power!",
-				ctx -> ctx.advancementEarned("minecraft:story/enchant_item")));
-
-		add(new TaskDefinition("easy_nether", Difficulty.EASY,
-				"Build a portal and enter the Nether",
-				"You made it to the Nether!",
-				ctx -> ctx.advancementEarned("minecraft:story/enter_the_nether")));
-
-		add(new TaskDefinition("easy_goat_horn", Difficulty.EASY,
-				"Obtain a Goat Horn",
-				"The horn sounds across the hills!",
-				ctx -> ctx.gained(Items.GOAT_HORN)));
-
-		add(new TaskDefinition("easy_tame", Difficulty.EASY,
-				"Tame an animal, and get a cat and a wolf into the group",
-				"You have companions!",
-				ctx -> ctx.advancementEarned("minecraft:husbandry/tame_an_animal")
-						&& ctx.gained(Items.BONE)));
-
-		add(new TaskDefinition("easy_lava_bucket", Difficulty.EASY,
-				"Fill a bucket with lava and smelt iron",
-				"Industry begins!",
-				ctx -> ctx.allAdvancementsEarned("minecraft:story/lava_bucket",
-						"minecraft:story/smelt_iron")));
-
-		add(new TaskDefinition("easy_sleep_and_bread", Difficulty.EASY,
-				"Sleep in a bed and bake bread for the group",
-				"Rested and fed!",
-				ctx -> ctx.advancementEarned("minecraft:adventure/sleep_in_bed")
-						&& ctx.gained(Items.BREAD, 5)));
-
-		// ------------------------------------------------------------------
-		// STANDARD — the default 90 minute experience
-		// ------------------------------------------------------------------
-		add(new TaskDefinition("std_breed_biomes", Difficulty.STANDARD,
-				"Breed a Panda, a Mooshroom and a Goat",
-				"Three biomes, three families!",
-				ctx -> ctx.allBred("minecraft:panda", "minecraft:mooshroom", "minecraft:goat")));
-
-		add(new TaskDefinition("std_diamond_everyone", Difficulty.STANDARD,
-				"Everyone (except the Impostor) wears full diamond armour",
-				"The crew shines!",
-				ctx -> ctx.allInnocentsWearing(Items.DIAMOND_HELMET, Items.DIAMOND_CHESTPLATE,
-						Items.DIAMOND_LEGGINGS, Items.DIAMOND_BOOTS)));
-
-		add(new TaskDefinition("std_hunt_three", Difficulty.STANDARD,
-				"Hunt an adult Frog, a Polar Bear and a Ravager",
-				"Fearless hunters!",
-				ctx -> ctx.allMobsKilled("minecraft:frog", "minecraft:polar_bear",
-						"minecraft:ravager")));
-
-		add(new TaskDefinition("std_decorated_pot", Difficulty.STANDARD,
-				"Craft a Decorated Pot from four pottery sherds",
-				"An archaeological triumph!",
-				ctx -> ctx.advancementEarned(
-						"minecraft:adventure/craft_decorated_pot_using_only_sherds")));
-
-		add(new TaskDefinition("std_music_disc", Difficulty.STANDARD,
-				"Get a creeper to drop a music disc, then play it in a jukebox",
-				"The music plays!",
-				ctx -> ctx.advancementEarned("minecraft:adventure/play_jukebox_in_meadows")
-						|| ctx.gained(Items.MUSIC_DISC_13)
-						|| ctx.gained(Items.MUSIC_DISC_CAT)));
-
-		add(new TaskDefinition("std_ancient_debris", Difficulty.STANDARD,
-				"Find Ancient Debris and brew a potion",
-				"Deep delving and dark brewing!",
-				ctx -> ctx.allAdvancementsEarned("minecraft:nether/obtain_ancient_debris",
-						"minecraft:nether/brew_potion")));
-
-		add(new TaskDefinition("std_die_three_ways", Difficulty.STANDARD,
-				"Someone must die to a cactus, to the void, and to the wither effect",
-				"A trilogy of terrible decisions!",
-				ctx -> ctx.diedOf("minecraft:cactus")
-						&& ctx.diedOf("minecraft:out_of_world")
-						&& ctx.diedOf("minecraft:wither")));
-
-		add(new TaskDefinition("std_cure_villager", Difficulty.STANDARD,
-				"Cure a Zombie Villager",
-				"Brought back from the brink!",
-				ctx -> ctx.advancementEarned("minecraft:story/cure_zombie_villager")));
-
-		add(new TaskDefinition("std_blaze_rods", Difficulty.STANDARD,
-				"Find a Nether Fortress and bring back 3 Blaze Rods",
-				"The fortress has been raided!",
-				ctx -> ctx.advancementEarned("minecraft:nether/obtain_blaze_rod")
-						&& ctx.gained(Items.BLAZE_ROD, 3)));
-
-		// ------------------------------------------------------------------
-		// HARD — each one a single, well-defined, genuinely difficult objective
-		// ------------------------------------------------------------------
-		add(new TaskDefinition("hard_full_shulker", Difficulty.HARD,
-				"Fill a Shulker Box completely (all 27 slots)",
-				"Packed to the brim!",
-				TaskContext::anyFullShulkerBox));
-
-		add(new TaskDefinition("hard_totem", Difficulty.HARD,
-				"Raid a woodland mansion and obtain a Totem of Undying",
-				"Cheating death!",
-				ctx -> ctx.advancementEarned("minecraft:adventure/totem_of_undying")
-						|| ctx.gained(Items.TOTEM_OF_UNDYING)));
-		add(new TaskDefinition("hard_beacon", Difficulty.HARD,
-				"Activate a Beacon",
-				"The beacon pierces the sky!",
-				ctx -> ctx.advancementEarned("minecraft:nether/create_beacon")));
-
-		add(new TaskDefinition("hard_full_beacon", Difficulty.HARD,
-				"Build a Beacon to full power (all four tiers)",
-				"A monument of pure resource!",
-				ctx -> ctx.advancementEarned("minecraft:nether/create_full_beacon")));
-
-		add(new TaskDefinition("hard_netherite", Difficulty.HARD,
-				"Get one player (not the Impostor) into full netherite armour",
-				"Forged in the deep!",
-				ctx -> ctx.anyInnocentWearing(Items.NETHERITE_HELMET, Items.NETHERITE_CHESTPLATE,
-						Items.NETHERITE_LEGGINGS, Items.NETHERITE_BOOTS)));
-
-		add(new TaskDefinition("hard_wither", Difficulty.HARD,
-				"Summon and defeat the Wither",
-				"The Wither falls!",
-				ctx -> ctx.advancementEarned("minecraft:nether/summon_wither")
-						&& ctx.mobKilled("minecraft:wither")));
-
-		add(new TaskDefinition("hard_dragon", Difficulty.HARD,
-				"Defeat the Ender Dragon",
-				"The Dragon is slain!",
-				ctx -> ctx.advancementEarned("minecraft:end/kill_dragon")));
-
-		add(new TaskDefinition("hard_elytra", Difficulty.HARD,
-				"Find an End City and recover an Elytra",
-				"You have wings!",
-				ctx -> ctx.advancementEarned("minecraft:end/elytra")
-						|| ctx.gained(Items.ELYTRA)));
-
-		add(new TaskDefinition("hard_froglights", Difficulty.HARD,
-				"Obtain all three colours of Froglight",
-				"A rainbow from the Nether!",
-				ctx -> ctx.advancementEarned("minecraft:husbandry/froglights")
-						|| (ctx.gained(Items.OCHRE_FROGLIGHT)
-								&& ctx.gained(Items.VERDANT_FROGLIGHT)
-								&& ctx.gained(Items.PEARLESCENT_FROGLIGHT))));
-
-		add(new TaskDefinition("hard_all_effects", Difficulty.HARD,
-				"Have every status effect applied at once to a single player",
-				"A walking apothecary!",
-				ctx -> ctx.advancementEarned("minecraft:nether/all_effects")));
-
-		add(new TaskDefinition("hard_adventuring_time", Difficulty.HARD,
-				"Visit a huge spread of biomes (Adventuring Time)",
-				"You have seen the world!",
-				ctx -> ctx.advancementEarned("minecraft:adventure/adventuring_time")));
+		register(Difficulty.BEGINNER, BeginnerTasks.subTasks(), BeginnerTasks.majorTasks());
+		register(Difficulty.STANDARD, StandardTasks.subTasks(), StandardTasks.majorTasks());
+		register(Difficulty.ADVANCED, AdvancedTasks.subTasks(), AdvancedTasks.majorTasks());
+		register(Difficulty.EXPERT, ExpertTasks.subTasks(), ExpertTasks.majorTasks());
+		register(Difficulty.MASTER, MasterTasks.subTasks(), MasterTasks.majorTasks());
 	}
 
-	private static void add(TaskDefinition task) {
-		POOLS.computeIfAbsent(task.difficulty(), d -> new ArrayList<>()).add(task);
+	private static void register(Difficulty d, List<TaskDefinition> subs, List<TaskDefinition> majors) {
+		SUBS.put(d, List.copyOf(subs));
+		MAJORS.put(d, List.copyOf(majors));
 	}
 
-	public static List<TaskDefinition> pool(Difficulty difficulty) {
-		return POOLS.getOrDefault(difficulty, List.of());
+	public static List<TaskDefinition> subPool(Difficulty difficulty) {
+		return SUBS.getOrDefault(difficulty, List.of());
 	}
 
-	/** Picks a random task from the given tier. */
-	public static TaskDefinition random(Difficulty difficulty) {
-		List<TaskDefinition> pool = pool(difficulty);
-		if (pool.isEmpty()) {
-			return null;
-		}
-		return pool.get(RANDOM.nextInt(pool.size()));
+	public static List<TaskDefinition> majorPool(Difficulty difficulty) {
+		return MAJORS.getOrDefault(difficulty, List.of());
+	}
+
+	public static List<AdvancementTask> advancementPool(Difficulty difficulty) {
+		return AdvancementPools.pool(difficulty);
 	}
 
 	public static TaskDefinition byId(String id) {
-		for (List<TaskDefinition> pool : POOLS.values()) {
-			for (TaskDefinition task : pool) {
-				if (task.id().equals(id)) {
-					return task;
+		for (Difficulty d : Difficulty.values()) {
+			for (TaskDefinition t : subPool(d)) {
+				if (t.id().equals(id)) {
+					return t;
+				}
+			}
+			for (TaskDefinition t : majorPool(d)) {
+				if (t.id().equals(id)) {
+					return t;
 				}
 			}
 		}
 		return null;
+	}
+
+	// ------------------------------------------------------------------
+	// Generation
+	// ------------------------------------------------------------------
+
+	/** The objectives generated for one match. */
+	public record Generated(
+			TaskFormat format,
+			List<TaskDefinition> tasks,
+			List<AdvancementTask> advancements
+	) {
+		public int size() {
+			return format == TaskFormat.FIVE_ADVANCEMENTS ? advancements.size() : tasks.size();
+		}
+	}
+
+	/** Picks a format at random, then fills it. */
+	public static Generated generate(Difficulty difficulty) {
+		TaskFormat[] formats = TaskFormat.values();
+		return generate(difficulty, formats[RANDOM.nextInt(formats.length)]);
+	}
+
+	public static Generated generate(Difficulty difficulty, TaskFormat format) {
+		return switch (format) {
+			case ONE_MAJOR -> {
+				List<TaskDefinition> pool = majorPool(difficulty);
+				yield new Generated(format,
+						pool.isEmpty() ? List.of() : List.of(pool.get(RANDOM.nextInt(pool.size()))),
+						List.of());
+			}
+			case THREE_SUBTASKS -> new Generated(format, pickThreeDistinct(difficulty), List.of());
+			case FIVE_ADVANCEMENTS -> new Generated(format, List.of(), pickFiveAdvancements(difficulty));
+		};
+	}
+
+	/**
+	 * Picks three sub-tasks from three DIFFERENT categories.
+	 *
+	 * <p>Three independent random picks can easily produce "find a Nether fortress", "obtain
+	 * blaze rods" and "obtain nether wart" — technically three objectives, functionally one
+	 * expedition. Requiring distinct categories is what keeps the three meaningfully separate
+	 * and gets the group splitting up.
+	 *
+	 * <p>Falls back to allowing a repeated category only if the pool genuinely cannot supply
+	 * three different ones, so generation can never fail outright.
+	 */
+	public static List<TaskDefinition> pickThreeDistinct(Difficulty difficulty) {
+		List<TaskDefinition> pool = new ArrayList<>(subPool(difficulty));
+		if (pool.size() <= 3) {
+			return List.copyOf(pool);
+		}
+		Collections.shuffle(pool, RANDOM);
+
+		List<TaskDefinition> chosen = new ArrayList<>(3);
+		Set<TaskCategory> usedCategories = new HashSet<>();
+
+		for (TaskDefinition candidate : pool) {
+			if (chosen.size() == 3) {
+				break;
+			}
+			if (usedCategories.add(candidate.category())) {
+				chosen.add(candidate);
+			}
+		}
+
+		// Top up if the pool didn't have three distinct categories available.
+		for (TaskDefinition candidate : pool) {
+			if (chosen.size() == 3) {
+				break;
+			}
+			if (!chosen.contains(candidate)) {
+				chosen.add(candidate);
+			}
+		}
+		return List.copyOf(chosen);
+	}
+
+	/** Picks five distinct advancements from the tier's bracketed pool. */
+	public static List<AdvancementTask> pickFiveAdvancements(Difficulty difficulty) {
+		List<AdvancementTask> pool = new ArrayList<>(advancementPool(difficulty));
+		if (pool.size() <= 5) {
+			return List.copyOf(pool);
+		}
+		Collections.shuffle(pool, RANDOM);
+		return List.copyOf(pool.subList(0, 5));
 	}
 }

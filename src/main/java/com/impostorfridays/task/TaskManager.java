@@ -7,67 +7,61 @@ import com.impostorfridays.net.GameSyncS2C;
 import net.minecraft.advancement.AdvancementEntry;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
+import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.passive.PassiveEntity;
+import net.minecraft.entity.passive.TameableEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.ItemStack;
+import net.minecraft.registry.Registries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.math.BlockPos;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
-import java.util.UUID;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
- * Runs the shared task for the current match.
+ * Runs the objectives for the current match.
  *
  * <p>Completion is polled on a timer rather than hooked into a dozen game events, which keeps
- * the {@link TaskDefinition} predicates simple and side-effect free.
+ * every {@link TaskDefinition} predicate simple and side-effect free.
  *
- * <p><b>Advancements are match-scoped.</b> A baseline of every already-earned advancement is
- * captured at {@code /start}, and only advancements completed after that count. Without this,
- * a task like "enter the Nether" would complete instantly on a world where somebody had done
- * it in a previous round.
+ * <p>Everything is match-scoped. Advancements and item counts are baselined per player on first
+ * sight, so neither a previous round nor a late joiner's history can complete an objective.
  */
 public final class TaskManager {
 
 	/** How often completion is evaluated and the world is scanned. */
 	private static final int POLL_INTERVAL = 40;
+	/** Radius searched around each player for objective-relevant blocks. */
+	private static final int BLOCK_SCAN_RADIUS = 6;
 
 	private static TaskContext context;
-	/** Every objective for this match. One entry for RANDOM, several for a preset set. */
-	private static List<TaskDefinition> activeTasks = List.of();
-	/** Ids of objectives already finished, so each is announced exactly once. */
-	private static final Set<String> completedTaskIds = new HashSet<>();
-	private static TaskSet activeSet;
-	/**
-	 * Per-player snapshot of advancements already earned before this match counted.
-	 *
-	 * <p>Keyed by player because a player who joins mid-match brings their own history with them.
-	 * A single shared baseline taken at /start would treat every advancement a late joiner
-	 * already had as "newly earned", instantly completing tasks like "enter the Nether".
-	 */
+	private static TaskPools.Generated generated;
+	private static final Set<String> completedIds = new HashSet<>();
 	private static Map<UUID, Set<String>> advancementBaseline = new HashMap<>();
 	private static int tickCounter;
-	private static boolean completed;
+	private static boolean allComplete;
 
 	private TaskManager() {
 	}
 
-	public static List<TaskDefinition> getActiveTasks() {
-		return activeTasks;
+	public static TaskPools.Generated getGenerated() {
+		return generated;
 	}
 
-	/** The preset set in play, or null when running a single random task. */
-	public static TaskSet getActiveSet() {
-		return activeSet;
+	public static TaskFormat getFormat() {
+		return generated == null ? null : generated.format();
 	}
 
 	// ------------------------------------------------------------------
@@ -76,60 +70,34 @@ public final class TaskManager {
 
 	public static void start(MinecraftServer server) {
 		context = new TaskContext(server);
-		completed = false;
+		completedIds.clear();
+		allComplete = false;
 		tickCounter = 0;
-		completedTaskIds.clear();
 
 		GameConfig cfg = GameConfig.get();
-		String setId = cfg.getTaskSet();
-		activeSet = TaskSets.isRandom(setId) ? null : TaskSets.byId(setId);
-
-		if (activeSet != null) {
-			activeTasks = activeSet.resolve();
-		} else {
-			TaskDefinition single = TaskPools.random(cfg.getDifficulty());
-			activeTasks = single == null ? List.of() : List.of(single);
-		}
-
-		if (activeTasks.isEmpty()) {
-			ImpostorFridays.LOGGER.warn("No tasks available (set={}, difficulty={})",
-					setId, cfg.getDifficulty());
-			GameManager.setTaskLines(List.of());
-			return;
-		}
+		generated = TaskPools.generate(cfg.getDifficulty());
 
 		advancementBaseline = new HashMap<>();
 		for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
 			advancementBaseline.put(player.getUuid(), snapshotAdvancements(server, player));
 			context.addToBaseline(player);
 		}
+
 		publishTaskLines();
 
-		if (activeSet != null) {
-			ImpostorFridays.LOGGER.info("Task set for this match: {} ({} objectives, ~{} min)",
-					activeSet.displayName(), activeTasks.size(), activeSet.estimateMins());
+		ImpostorFridays.LOGGER.info("Objectives [{} / {}]:",
+				cfg.getDifficulty().getDisplayName(), generated.format().getDisplayName());
+		for (String line : objectiveDescriptions()) {
+			ImpostorFridays.LOGGER.info("  - {}", line);
 		}
-		for (TaskDefinition task : activeTasks) {
-			ImpostorFridays.LOGGER.info("  objective [{}]: {}", task.id(), task.description());
-		}
-	}
-
-	/** Pushes the current objective list and its completion state to every HUD. */
-	private static void publishTaskLines() {
-		List<GameSyncS2C.TaskLine> lines = new ArrayList<>();
-		for (TaskDefinition task : activeTasks) {
-			lines.add(new GameSyncS2C.TaskLine(task.description(), completedTaskIds.contains(task.id())));
-		}
-		GameManager.setTaskLines(lines);
 	}
 
 	public static void end() {
 		context = null;
-		activeTasks = List.of();
-		activeSet = null;
-		completedTaskIds.clear();
+		generated = null;
+		completedIds.clear();
 		advancementBaseline = new HashMap<>();
-		completed = false;
+		allComplete = false;
 		tickCounter = 0;
 	}
 
@@ -145,22 +113,97 @@ public final class TaskManager {
 	}
 
 	// ------------------------------------------------------------------
+	// Objective listing
+	// ------------------------------------------------------------------
+
+	private static List<String> objectiveDescriptions() {
+		List<String> lines = new ArrayList<>();
+		if (generated == null) {
+			return lines;
+		}
+		if (generated.format() == TaskFormat.FIVE_ADVANCEMENTS) {
+			for (AdvancementTask a : generated.advancements()) {
+				lines.add(a.displayName());
+			}
+		} else {
+			for (TaskDefinition t : generated.tasks()) {
+				lines.add(t.displayText());
+			}
+		}
+		return lines;
+	}
+
+	private static boolean isObjectiveComplete(int index) {
+		if (generated.format() == TaskFormat.FIVE_ADVANCEMENTS) {
+			AdvancementTask a = generated.advancements().get(index);
+			return completedIds.contains(a.advancementId());
+		}
+		return completedIds.contains(generated.tasks().get(index).id());
+	}
+
+	/** Pushes the objective list and completion state to every HUD. */
+	private static void publishTaskLines() {
+		List<GameSyncS2C.TaskLine> lines = new ArrayList<>();
+		if (generated != null) {
+			List<String> descriptions = objectiveDescriptions();
+			for (int i = 0; i < descriptions.size(); i++) {
+				lines.add(new GameSyncS2C.TaskLine(descriptions.get(i), isObjectiveComplete(i)));
+			}
+		}
+		GameManager.setTaskLines(lines);
+	}
+
+	// ------------------------------------------------------------------
 	// Event recording
 	// ------------------------------------------------------------------
 
-	/** Records a mob killed by a player, and a player's own cause of death. */
+	/** Records a kill, its weapon and armour conditions, or a player's cause of death. */
 	public static void onDeath(LivingEntity entity, DamageSource source) {
 		if (context == null) {
 			return;
 		}
-		if (entity instanceof PlayerEntity) {
+
+		if (entity instanceof PlayerEntity player) {
 			source.getTypeRegistryEntry().getKey()
 					.ifPresent(key -> context.playerDeathCauses.add(key.getValue().toString()));
+			// Dying breaks any "without dying" run.
+			context.killStreak.put(player.getUuid(), 0);
 			return;
 		}
-		// Only count mobs a player actually killed.
-		if (source.getAttacker() instanceof PlayerEntity) {
-			context.mobsKilled.add(EntityType.getId(entity.getType()).toString());
+
+		if (!(source.getAttacker() instanceof ServerPlayerEntity killer)) {
+			return;
+		}
+
+		String typeId = EntityType.getId(entity.getType()).toString();
+		context.killCounts.merge(typeId, 1, Integer::sum);
+		context.killStreak.merge(killer.getUuid(), 1, Integer::sum);
+
+		ItemStack weapon = killer.getMainHandStack();
+		if (!weapon.isEmpty()) {
+			var weaponId = Registries.ITEM.getId(weapon.getItem());
+			if (weaponId != null) {
+				context.killWeapons.add(weaponId.toString());
+			}
+		}
+
+		boolean wearingArmour = false;
+		for (EquipmentSlot slot : new EquipmentSlot[]{EquipmentSlot.HEAD, EquipmentSlot.CHEST,
+				EquipmentSlot.LEGS, EquipmentSlot.FEET}) {
+			if (!killer.getEquippedStack(slot).isEmpty()) {
+				wearingArmour = true;
+				break;
+			}
+		}
+		if (!wearingArmour) {
+			context.noArmourKills++;
+		}
+	}
+
+	/** Called by the trade mixin whenever a villager trade is used. */
+	public static void onVillagerTrade() {
+		if (context != null) {
+			context.villagerTrades++;
 		}
 	}
 
@@ -169,7 +212,7 @@ public final class TaskManager {
 	// ------------------------------------------------------------------
 
 	public static void tick(MinecraftServer server) {
-		if (context == null || activeTasks.isEmpty() || completed || !GameManager.isActive()) {
+		if (context == null || generated == null || allComplete || !GameManager.isActive()) {
 			return;
 		}
 		if (++tickCounter < POLL_INTERVAL) {
@@ -178,21 +221,37 @@ public final class TaskManager {
 		tickCounter = 0;
 
 		refreshAdvancements(server);
-		scanForBabyAnimals(server);
+		scanWorld(server);
+		evaluate(server);
+	}
 
+	private static void evaluate(MinecraftServer server) {
 		boolean somethingFinished = false;
-		for (TaskDefinition task : activeTasks) {
-			if (completedTaskIds.contains(task.id())) {
+		List<String> descriptions = objectiveDescriptions();
+
+		for (int i = 0; i < descriptions.size(); i++) {
+			if (isObjectiveComplete(i)) {
 				continue;
 			}
-			if (task.check().isComplete(context)) {
-				completedTaskIds.add(task.id());
+			boolean done;
+			String id;
+			if (generated.format() == TaskFormat.FIVE_ADVANCEMENTS) {
+				AdvancementTask a = generated.advancements().get(i);
+				id = a.advancementId();
+				done = context.advancementEarned(a.advancementId());
+			} else {
+				TaskDefinition t = generated.tasks().get(i);
+				id = t.id();
+				done = t.check().isComplete(context);
+			}
+			if (done) {
+				completedIds.add(id);
 				somethingFinished = true;
 				GameManager.broadcast(server, Text.literal("✔ ")
 						.formatted(Formatting.GREEN, Formatting.BOLD)
-						.append(Text.literal(task.completionMessage()).formatted(Formatting.GREEN))
-						.append(Text.literal("  (" + completedTaskIds.size() + "/"
-								+ activeTasks.size() + ")").formatted(Formatting.DARK_GREEN)));
+						.append(Text.literal(descriptions.get(i)).formatted(Formatting.GREEN))
+						.append(Text.literal("  (" + completedIds.size() + "/" + descriptions.size()
+								+ ")").formatted(Formatting.DARK_GREEN)));
 			}
 		}
 
@@ -200,22 +259,19 @@ public final class TaskManager {
 			publishTaskLines();
 		}
 
-		// The Innocents win only once every objective in the set is done.
-		if (completedTaskIds.size() >= activeTasks.size()) {
-			completed = true;
+		if (!descriptions.isEmpty() && completedIds.size() >= descriptions.size()) {
+			allComplete = true;
 			GameManager.broadcast(server, Text.literal("The Innocents win!")
 					.formatted(Formatting.GOLD, Formatting.BOLD));
-			GameManager.end(server);
+			GameManager.endWithWinner(server, true);
 		}
 	}
 
-	/** Adds advancements completed since the match began. */
 	private static void refreshAdvancements(MinecraftServer server) {
 		for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
 			Set<String> baseline = advancementBaseline.get(player.getUuid());
 			if (baseline == null) {
-				// A player who joined mid-match. Snapshot them now and count nothing this pass,
-				// so their existing history cannot complete the task for everyone.
+				// Joined mid-match: baseline them now and count nothing this pass.
 				advancementBaseline.put(player.getUuid(), snapshotAdvancements(server, player));
 				context.addToBaseline(player);
 				continue;
@@ -232,19 +288,74 @@ public final class TaskManager {
 		}
 	}
 
-	/**
-	 * Records baby animals currently alive.
-	 *
-	 * <p>Simpler and more reliable than hooking breeding events, and it naturally covers
-	 * any route to a baby animal the players find.
-	 */
-	private static void scanForBabyAnimals(MinecraftServer server) {
+	/** One pass over players recording biome, structure, tamed animals and nearby blocks. */
+	private static void scanWorld(MinecraftServer server) {
+		for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+			ServerWorld world = (ServerWorld) player.getEntityWorld();
+			BlockPos pos = player.getBlockPos();
+
+			world.getBiome(pos).getKey()
+					.ifPresent(key -> context.biomesVisited.add(key.getValue().toString()));
+
+			var start = world.getStructureAccessor().getStructureContaining(pos, entry -> true);
+			if (start != null && start.hasChildren()) {
+				world.getRegistryManager()
+						.getOptional(net.minecraft.registry.RegistryKeys.STRUCTURE)
+						.map(reg -> reg.getId(start.getStructure()))
+						.ifPresent(id -> {
+							if (id != null) {
+								context.structuresVisited.add(id.toString());
+							}
+						});
+			}
+
+			scanNearbyBlocks(world, pos);
+		}
+
 		for (ServerWorld world : server.getWorlds()) {
 			for (Entity entity : world.iterateEntities()) {
-				if (entity instanceof PassiveEntity passive && passive.isBaby()) {
-					context.babyAnimals.add(EntityType.getId(entity.getType()).toString());
+				recordEntity(entity);
+			}
+		}
+	}
+
+	private static void scanNearbyBlocks(ServerWorld world, BlockPos centre) {
+		BlockPos.Mutable cursor = new BlockPos.Mutable();
+		for (int x = -BLOCK_SCAN_RADIUS; x <= BLOCK_SCAN_RADIUS; x++) {
+			for (int y = -BLOCK_SCAN_RADIUS; y <= BLOCK_SCAN_RADIUS; y++) {
+				for (int z = -BLOCK_SCAN_RADIUS; z <= BLOCK_SCAN_RADIUS; z++) {
+					cursor.set(centre.getX() + x, centre.getY() + y, centre.getZ() + z);
+					if (!world.isChunkLoaded(cursor.getX() >> 4, cursor.getZ() >> 4)) {
+						continue;
+					}
+					var block = world.getBlockState(cursor).getBlock();
+					if (block == net.minecraft.block.Blocks.SPAWNER
+							|| block == net.minecraft.block.Blocks.ENCHANTING_TABLE
+							|| block == net.minecraft.block.Blocks.BEACON) {
+						var id = Registries.BLOCK.getId(block);
+						if (id != null) {
+							context.nearbyBlocks.add(id.toString());
+						}
+					}
 				}
 			}
+		}
+	}
+
+	private static void recordEntity(Entity entity) {
+		String typeId = EntityType.getId(entity.getType()).toString();
+
+		if (entity instanceof PassiveEntity passive && passive.isBaby()) {
+			context.babiesByType.computeIfAbsent(typeId, k -> new HashSet<>()).add(entity.getUuid());
+		}
+		if (entity instanceof TameableEntity tameable && tameable.getOwner() != null) {
+			context.tamedTypes.add(typeId);
+		}
+		if (entity instanceof net.minecraft.entity.passive.AbstractHorseEntity horse
+				&& horse.isTame()
+				&& !horse.getEquippedStack(EquipmentSlot.SADDLE).isEmpty()) {
+			context.saddledHorse = true;
+			context.tamedTypes.add(typeId);
 		}
 	}
 }
