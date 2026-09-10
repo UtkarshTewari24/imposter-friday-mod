@@ -30,7 +30,7 @@ public final class AbilityCommands {
 
 	public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
 		registerSimple(dispatcher, "blind", Ability.BLIND);
-		registerSimple(dispatcher, "invis", Ability.INVIS);
+		registerSimple(dispatcher, "hunt", Ability.HUNT);
 		registerSimple(dispatcher, "gravity", Ability.GRAVITY);
 		registerSwap(dispatcher);
 		registerSteal(dispatcher);
@@ -55,7 +55,7 @@ public final class AbilityCommands {
 			var server = ctx.getSource().getServer();
 			switch (ability) {
 				case BLIND -> AbilityManager.startBlind(server, player);
-				case INVIS -> AbilityManager.startInvis(server, player);
+				case HUNT -> AbilityManager.startHunt(server, player);
 				case GRAVITY -> AbilityManager.startGravity(server, player);
 				default -> {
 				}
@@ -118,29 +118,25 @@ public final class AbilityCommands {
 				TeleportTarget.NO_OP));
 	}
 
+	/**
+	 * {@code /steal} takes no argument: it opens the shared player picker so the Impostor
+	 * chooses a target from player heads, exactly like the tracking and sniff UIs.
+	 */
 	private static void registerSteal(CommandDispatcher<ServerCommandSource> dispatcher) {
-		dispatcher.register(CommandManager.literal("steal")
-				.then(CommandManager.argument("target", EntityArgumentType.player())
-						.executes(ctx -> {
-							ServerPlayerEntity player = ctx.getSource().getPlayer();
-							if (player == null) {
-								ctx.getSource().sendError(Text.literal("Only a player can use this."));
-								return 0;
-							}
-							Text error = AbilityManager.validate(player, Ability.STEAL);
-							if (error != null) {
-								ctx.getSource().sendError(error);
-								return 0;
-							}
-							ServerPlayerEntity target = EntityArgumentType.getPlayer(ctx, "target");
-							if (target.getUuid().equals(player.getUuid())) {
-								ctx.getSource().sendError(Text.literal("You cannot steal from yourself.")
-										.formatted(Formatting.RED));
-								return 0;
-							}
-							StealManager.open(player, target);
-							return 1;
-						})));
+		dispatcher.register(CommandManager.literal("steal").executes(ctx -> {
+			ServerPlayerEntity player = ctx.getSource().getPlayer();
+			if (player == null) {
+				ctx.getSource().sendError(Text.literal("Only a player can use this."));
+				return 0;
+			}
+			Text error = AbilityManager.validate(player, Ability.STEAL);
+			if (error != null) {
+				ctx.getSource().sendError(error);
+				return 0;
+			}
+			StealManager.requestPicker(player);
+			return 1;
+		}));
 	}
 
 	private static void registerSniff(CommandDispatcher<ServerCommandSource> dispatcher) {

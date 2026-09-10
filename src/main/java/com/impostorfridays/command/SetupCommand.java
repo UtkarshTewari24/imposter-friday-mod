@@ -29,13 +29,18 @@ public final class SetupCommand {
 
 	public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
 		dispatcher.register(CommandManager.literal("amongussetup")
-				.requires(Permissions::isAuthorized)
 				.executes(ctx -> {
+					if (!Permissions.checkAuthorized(ctx.getSource())) {
+						return 0;
+					}
 					showPanel(ctx.getSource());
 					return 1;
 				})
 				.then(CommandManager.literal("save")
 						.executes(ctx -> {
+							if (!Permissions.checkAuthorized(ctx.getSource())) {
+								return 0;
+							}
 							GameConfig.get().save();
 							ctx.getSource().sendFeedback(() -> Text.literal("✔ Settings saved to config/"
 									+ GameConfig.FILE_NAME).formatted(Formatting.GREEN), false);
@@ -43,6 +48,9 @@ public final class SetupCommand {
 						}))
 				.then(CommandManager.literal("reload")
 						.executes(ctx -> {
+							if (!Permissions.checkAuthorized(ctx.getSource())) {
+								return 0;
+							}
 							GameConfig.get().load();
 							ctx.getSource().sendFeedback(() -> Text.literal("↻ Settings reloaded from disk.")
 									.formatted(Formatting.YELLOW), false);
@@ -53,6 +61,9 @@ public final class SetupCommand {
 						.then(CommandManager.argument("key", StringArgumentType.word())
 								.then(CommandManager.argument("value", StringArgumentType.word())
 										.executes(ctx -> {
+											if (!Permissions.checkAuthorized(ctx.getSource())) {
+												return 0;
+											}
 											String key = StringArgumentType.getString(ctx, "key");
 											String value = StringArgumentType.getString(ctx, "value");
 											applySetting(ctx.getSource(), key, value);

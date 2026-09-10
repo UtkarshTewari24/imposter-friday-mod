@@ -289,7 +289,7 @@ That way you see the whole loop quickly. Bump them back up once everyone knows t
 | Command | Who | What it does |
 |---|---|---|
 | `/sniff` | Sniffer | Opens the suspect picker. Right guess strips one of the Impostor's abilities permanently. |
-| `/steal <player>` | Impostor | Opens their inventory. You may take **one** stack. |
+| `/steal` | Impostor | Opens a picker of player heads, then their inventory. One stack only. |
 | `/swap <p1> <p2>` | Impostor | Swaps two players' locations, even across dimensions. |
 | `/blind` | Impostor | Blinds **every** Innocent at once. |
 | `/gravity` | Impostor | Flips everyone else's world upside down. |

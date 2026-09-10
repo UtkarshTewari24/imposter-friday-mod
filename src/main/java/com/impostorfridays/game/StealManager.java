@@ -37,6 +37,14 @@ public final class StealManager {
 	private StealManager() {
 	}
 
+	/** Opens the shared player picker so the Impostor can choose a target by head. */
+	public static void requestPicker(ServerPlayerEntity impostor) {
+		net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(impostor,
+				new com.impostorfridays.net.OpenPickerS2C(
+						com.impostorfridays.net.PickerMode.STEAL.ordinal(),
+						TrackingManager.candidatesFor(impostor)));
+	}
+
 	/** Opens the steal window. Cooldown is consumed on OPEN, so it cannot be used for free recon. */
 	public static void open(ServerPlayerEntity impostor, ServerPlayerEntity target) {
 		Map<Integer, Integer> mapping = new HashMap<>();

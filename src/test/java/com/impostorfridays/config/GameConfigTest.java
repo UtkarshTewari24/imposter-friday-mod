@@ -66,6 +66,20 @@ class GameConfigTest {
 	}
 
 	@Test
+	void oldThreeTierConfigsMigrateRatherThanResetting() {
+		Properties legacy = new Properties();
+		legacy.setProperty("task.difficulty", "HARD");
+		GameConfig cfg = new GameConfig();
+		cfg.readFrom(legacy);
+		assertEquals(Difficulty.EXPERT, cfg.getDifficulty(),
+				"a pre-existing HARD config should become EXPERT, not silently reset");
+
+		legacy.setProperty("task.difficulty", "EASY");
+		cfg.readFrom(legacy);
+		assertEquals(Difficulty.BEGINNER, cfg.getDifficulty());
+	}
+
+	@Test
 	void everyDifficultyRoundTrips() {
 		for (Difficulty d : Difficulty.values()) {
 			GameConfig cfg = new GameConfig();

@@ -59,6 +59,43 @@ public final class AbilityManager {
 		return null;
 	}
 
+	/**
+	 * Validates and runs an ability. The single path used by BOTH the commands and the
+	 * optional keybinds, so the two can never drift apart in what they allow.
+	 *
+	 * @return true if the ability actually fired
+	 */
+	public static boolean tryUse(ServerPlayerEntity player, Ability ability) {
+		Text error = validate(player, ability);
+		if (error != null) {
+			player.sendMessage(error, false);
+			return false;
+		}
+		MinecraftServer server = player.getEntityWorld().getServer();
+		switch (ability) {
+			case BLIND -> startBlind(server, player);
+			case HUNT -> startHunt(server, player);
+			case GRAVITY -> startGravity(server, player);
+			case STEAL -> {
+				StealManager.requestPicker(player);
+				// The cooldown is taken when the steal window actually opens.
+				return true;
+			}
+			case SWAP -> {
+				player.sendMessage(Text.literal("/swap needs two players — use the command.")
+						.formatted(Formatting.RED), false);
+				return false;
+			}
+			default -> {
+				return false;
+			}
+		}
+		consumeCooldown(player);
+		player.sendMessage(Text.literal("/" + ability.getId() + " activated.")
+				.formatted(Formatting.GREEN), true);
+		return true;
+	}
+
 	/** Starts the single shared cooldown. Call after an ability actually succeeds. */
 	public static void consumeCooldown(ServerPlayerEntity player) {
 		GameState state = GameManager.getState();
@@ -105,33 +142,39 @@ public final class AbilityManager {
 			target.removeStatusEffect(StatusEffects.DARKNESS);
 			target.removeStatusEffect(StatusEffects.WEAKNESS);
 			// Don't un-hide the Impostor if /invis is still running and hiding them.
-			boolean stillHiddenByInvis = state != null
-					&& state.isEffectActive(Ability.INVIS)
+			boolean stillHiddenByHunt = state != null
+					&& state.isEffectActive(Ability.HUNT)
 					&& state.isImpostor(target.getUuid());
-			if (!stillHiddenByInvis) {
+			if (!stillHiddenByHunt) {
 				NametagHider.show(target);
 			}
 		}
 	}
 
 	// ------------------------------------------------------------------
-	// /invis — total invisibility for the Impostor
+	// /hunt — the Impostor's kill window: invisible, faster and stronger
 	// ------------------------------------------------------------------
 
-	public static void startInvis(MinecraftServer server, ServerPlayerEntity impostor) {
+	public static void startHunt(MinecraftServer server, ServerPlayerEntity impostor) {
 		GameState state = GameManager.getState();
-		int ticks = durationTicks(Ability.INVIS);
-		state.startEffect(Ability.INVIS, ticks);
+		int ticks = durationTicks(Ability.HUNT);
+		state.startEffect(Ability.HUNT, ticks);
 
+		// All three run for the same configured duration so the window is easy to reason about.
 		impostor.addStatusEffect(new StatusEffectInstance(
 				StatusEffects.INVISIBILITY, ticks, 0, false, false, false));
+		impostor.addStatusEffect(new StatusEffectInstance(
+				StatusEffects.STRENGTH, ticks, 1, false, false, false));
+		impostor.addStatusEffect(new StatusEffectInstance(
+				StatusEffects.SPEED, ticks, 1, false, false, false));
+
 		NametagHider.hide(impostor);
 		// Vanilla invisibility still renders armour and held items, so blank them out
 		// for everyone else by sending empty equipment.
 		broadcastEquipment(server, impostor, true);
 	}
 
-	private static void endInvis(MinecraftServer server) {
+	private static void endHunt(MinecraftServer server) {
 		GameState state = GameManager.getState();
 		if (state == null || state.getImpostorId() == null) {
 			return;
@@ -141,6 +184,8 @@ public final class AbilityManager {
 			return;
 		}
 		impostor.removeStatusEffect(StatusEffects.INVISIBILITY);
+		impostor.removeStatusEffect(StatusEffects.STRENGTH);
+		impostor.removeStatusEffect(StatusEffects.SPEED);
 		NametagHider.show(impostor);
 		broadcastEquipment(server, impostor, false);
 	}
@@ -153,7 +198,7 @@ public final class AbilityManager {
 	 */
 	public static void onPlayerJoin(MinecraftServer server, ServerPlayerEntity joiner) {
 		GameState state = GameManager.getState();
-		if (state == null || !state.isEffectActive(Ability.INVIS) || state.getImpostorId() == null) {
+		if (state == null || !state.isEffectActive(Ability.HUNT) || state.getImpostorId() == null) {
 			return;
 		}
 		ServerPlayerEntity impostor = server.getPlayerManager().getPlayer(state.getImpostorId());
@@ -207,13 +252,19 @@ public final class AbilityManager {
 	// /gravity — everyone except the Impostor
 	// ------------------------------------------------------------------
 
+	/**
+	 * Flips gravity for EVERYONE on the server, the Impostor included — it is a whole-world
+	 * event, not something done to other people.
+	 *
+	 * <p>Anyone in a boat is immune, which gives players a real counter to look for.
+	 */
 	public static void startGravity(MinecraftServer server, ServerPlayerEntity impostor) {
 		GameState state = GameManager.getState();
 		int ticks = durationTicks(Ability.GRAVITY);
 		state.startEffect(Ability.GRAVITY, ticks);
 
 		for (ServerPlayerEntity target : server.getPlayerManager().getPlayerList()) {
-			if (state.isImpostor(target.getUuid())) {
+			if (isInBoat(target)) {
 				continue;
 			}
 			// Minecraft has no gravity-inversion API. Levitation is the closest playable
@@ -224,12 +275,29 @@ public final class AbilityManager {
 		// The camera flip itself is driven by GameSyncS2C.gravityActive.
 	}
 
-	private static void endGravity(MinecraftServer server) {
-		GameState state = GameManager.getState();
+	/** Boats are the one place anti-gravity does not reach. */
+	public static boolean isInBoat(ServerPlayerEntity player) {
+		return player.hasVehicle()
+				&& player.getVehicle() instanceof net.minecraft.entity.vehicle.AbstractBoatEntity;
+	}
+
+	/**
+	 * Keeps gravity honest while it runs: someone who leaves a boat mid-effect starts
+	 * floating, and someone who climbs into one stops.
+	 */
+	private static void refreshGravity(MinecraftServer server, int remainingTicks) {
 		for (ServerPlayerEntity target : server.getPlayerManager().getPlayerList()) {
-			if (state != null && state.isImpostor(target.getUuid())) {
-				continue;
+			if (isInBoat(target)) {
+				target.removeStatusEffect(StatusEffects.LEVITATION);
+			} else if (!target.hasStatusEffect(StatusEffects.LEVITATION)) {
+				target.addStatusEffect(new StatusEffectInstance(
+						StatusEffects.LEVITATION, remainingTicks, 0, false, false, false));
 			}
+		}
+	}
+
+	private static void endGravity(MinecraftServer server) {
+		for (ServerPlayerEntity target : server.getPlayerManager().getPlayerList()) {
 			target.removeStatusEffect(StatusEffects.LEVITATION);
 			// Cushion the drop so the ability is never lethal on its own.
 			target.addStatusEffect(new StatusEffectInstance(
@@ -251,7 +319,11 @@ public final class AbilityManager {
 			return;
 		}
 
-		for (Ability ability : new Ability[]{Ability.BLIND, Ability.INVIS, Ability.GRAVITY}) {
+		if (state.isEffectActive(Ability.GRAVITY)) {
+			refreshGravity(server, state.getEffectTicks(Ability.GRAVITY));
+		}
+
+		for (Ability ability : new Ability[]{Ability.BLIND, Ability.HUNT, Ability.GRAVITY}) {
 			boolean active = state.isEffectActive(ability);
 			boolean wasActive = runningEffects.contains(ability);
 			if (active && !wasActive) {
@@ -266,7 +338,7 @@ public final class AbilityManager {
 	private static void endEffect(MinecraftServer server, Ability ability) {
 		switch (ability) {
 			case BLIND -> endBlind(server);
-			case INVIS -> endInvis(server);
+			case HUNT -> endHunt(server);
 			case GRAVITY -> endGravity(server);
 			default -> {
 			}
@@ -276,7 +348,7 @@ public final class AbilityManager {
 	/** Hard reset used by {@code /end} so nothing can outlive a match. */
 	public static void cleanupAll(MinecraftServer server) {
 		endBlind(server);
-		endInvis(server);
+		endHunt(server);
 		endGravity(server);
 		runningEffects.clear();
 		for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {

@@ -5,7 +5,9 @@ public enum PickerMode {
 	/** Impostor's Tracking Compass — sets the compass target. */
 	TRACK,
 	/** Sniffer's {@code /sniff} — attempts to identify the Impostor. */
-	SNIFF;
+	SNIFF,
+	/** Impostor's {@code /steal} — choose whose inventory to open. */
+	STEAL;
 
 	public static PickerMode byOrdinal(int i) {
 		PickerMode[] v = values();

@@ -51,17 +51,27 @@ public class PlayerPickerScreen extends Screen {
 	private record Row(UUID id, String name, boolean nearest) {
 	}
 
-	public PlayerPickerScreen(PickerMode mode, List<OpenPickerS2C.Entry> entries) {
-		super(Text.literal(mode == PickerMode.SNIFF ? "Sniff a Player" : "Track a Player"));
+	public PlayerPickerScreen(PickerMode mode, List<OpenPickerS2C.Entry> entries,
+			boolean allowNearest) {
+		super(Text.literal(titleFor(mode)));
 		this.mode = mode;
 
-		// "Nearest Player" only makes sense for tracking; sniffing needs a deliberate choice.
-		if (mode == PickerMode.TRACK) {
+		// "Nearest Player" is an Impostor-only shortcut, and only for tracking — sniffing and
+		// stealing both need a deliberate choice. The server decides who gets it.
+		if (mode == PickerMode.TRACK && allowNearest) {
 			rows.add(new Row(NEAREST_SENTINEL, "Nearest Player", true));
 		}
 		for (OpenPickerS2C.Entry e : entries) {
 			rows.add(new Row(e.id(), e.name(), false));
 		}
+	}
+
+	private static String titleFor(PickerMode mode) {
+		return switch (mode) {
+			case SNIFF -> "Sniff a Player";
+			case STEAL -> "Steal From a Player";
+			case TRACK -> "Track a Player";
+		};
 	}
 
 	@Override

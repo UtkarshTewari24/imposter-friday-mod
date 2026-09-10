@@ -45,8 +45,8 @@ All five share **one cooldown** (5 minutes by default) — using any one locks a
 | `/steal <player>` | Opens a real chest-style view of that player's inventory. You may take **one** stack. |
 | `/swap <player1> <player2>` | Silently swaps two players' locations, even across dimensions. |
 | `/blind` | Blinds and weakens **every** Innocent at once. |
-| `/gravity` | Flips everyone else's world upside down. |
-| `/invis` | Total invisibility — no body, no armour, no held item, no nametag. |
+| `/gravity` | Flips gravity for **everyone on the server**, the Impostor included. Anyone in a **boat** is immune. |
+| `/hunt` | The kill window: total invisibility **plus Strength and Speed**, all for the same duration. |
 
 Dying does **not** cost you the Impostor role or any of your abilities.
 
@@ -64,7 +64,7 @@ or sounds a bystander could use to work out who was tested.
 | Command | Description |
 |---|---|
 | `/sniff` | Sniffer only — opens the suspect picker. |
-| `/steal`, `/swap`, `/blind`, `/gravity`, `/invis` | Impostor only. |
+| `/steal`, `/swap`, `/blind`, `/gravity`, `/hunt` | Impostor only. |
 
 ### Admins
 Admins are the usernames hardcoded in `Permissions.ADMIN_USERNAMES` (`MrBoombox840`,
@@ -95,32 +95,31 @@ cooldown, which abilities are enabled and how long each lasts, the Sniffer and i
 difficulty, and voice chat muting. Press **Save Settings** to write them to
 `config/amongusgame.properties`.
 
-### Task sets
+### Objectives
 
-Pick a **preset set** of three objectives, or leave it on **Random** for a single task drawn from
-the difficulty pool.
+Every match randomly picks **one of three formats**:
 
-| Set | Feel | Rough length |
-|---|---|---|
-| **Set 1 — First Light** | Gentle. Good for a group's first game. | ~50 min |
-| **Set 2 — Groundwork** | The standard game. Sends people in three directions. | ~70 min |
-| **Set 3 — Deep Cuts** | Heavier. Mining, a village project, a bit of luck. | ~80 min |
-| **Set 4 — The Long Haul** | Hard. Built around one big objective. | ~90 min |
-| **Set 5 — Endgame** | Very hard. Ender Dragon. | ~90 min |
-| **Set 6 — Scattered** | Maximum splitting up. | ~75 min |
+| Format | What it means |
+|---|---|
+| **3 Objectives** | Three independent sub-tasks, always from three *different* categories |
+| **Major Objective** | One large objective that contains substantial work by itself |
+| **5 Advancements** | Five specific vanilla advancements |
 
-Every set is built the same way — **one anchor** (the hard objective that decides the match), **one
-spread** (something needing several biomes or dimensions, so the group has to separate), and **one
-light** (a quick win so a bad start never feels hopeless). No set stacks two boss-tier objectives,
-because that can't be finished in the time.
+And **one of five difficulties**:
 
-Innocents must complete **all three** to win. The HUD shows progress as they go.
+| | Intended feeling |
+|---|---|
+| 🟢 **Beginner** | "We can definitely do this." |
+| 🔵 **Standard** | "We'll need to split up." |
+| 🟠 **Advanced** | "Okay, we need a real plan." |
+| 🔴 **Expert** | "This is going to take most of the game." |
+| 🟣 **Master** | "We need basically everyone contributing efficiently." |
 
-On **Random**, difficulty picks the pool the single task is drawn from:
+There are **275 tasks and 98 advancement entries** across the tiers, so games rarely repeat.
+Objectives are always objectively measurable — never "build a nice house".
 
-- **Easy** — breed three farm animals, full iron for everyone, enchant something
-- **Standard** — a panda, a mooshroom and a goat; full diamond for every Innocent; cure a villager
-- **Hard** — activate a beacon, defeat the Wither, full netherite, recover an elytra
+Anything needing the whole group says **"(excluding Impostor)"**, so the Impostor can't sabotage
+it by simply refusing to take part.
 
 ## Building from source
 

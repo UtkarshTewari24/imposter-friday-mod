@@ -22,10 +22,28 @@ public final class ServerNetworkHandlers {
 	}
 
 	public static void register() {
+		ServerPlayNetworking.registerGlobalReceiver(AbilityUseC2S.ID, (payload, context) -> {
+			ServerPlayerEntity player = context.player();
+			context.server().execute(() -> handleAbilityUse(player, payload));
+		});
+
 		ServerPlayNetworking.registerGlobalReceiver(PickerSelectC2S.ID, (payload, context) -> {
 			ServerPlayerEntity player = context.player();
 			context.server().execute(() -> handleSelect(player, payload));
 		});
+	}
+
+	private static void handleAbilityUse(ServerPlayerEntity player, AbilityUseC2S payload) {
+		if (!GameManager.isActive()) {
+			player.sendMessage(Text.literal("No game is running.").formatted(Formatting.RED), true);
+			return;
+		}
+		com.impostorfridays.game.Ability ability =
+				com.impostorfridays.game.Ability.byId(payload.abilityId());
+		if (ability == null) {
+			return;
+		}
+		com.impostorfridays.game.AbilityManager.tryUse(player, ability);
 	}
 
 	private static void handleSelect(ServerPlayerEntity player, PickerSelectC2S payload) {
@@ -57,6 +75,18 @@ public final class ServerNetworkHandlers {
 					return;
 				}
 				TrackingManager.setTarget(player, targetId, payload.nearest());
+			}
+			case STEAL -> {
+				if (!GameManager.getState().isImpostor(player.getUuid()) || payload.nearest()) {
+					return;
+				}
+				Text error = com.impostorfridays.game.AbilityManager.validate(
+						player, com.impostorfridays.game.Ability.STEAL);
+				if (error != null) {
+					player.sendMessage(error, false);
+					return;
+				}
+				com.impostorfridays.game.StealManager.open(player, target);
 			}
 			case SNIFF -> {
 				if (!GameManager.getState().isSniffer(player.getUuid())) {

@@ -41,14 +41,22 @@ public enum Difficulty {
 	}
 
 	public static Difficulty byName(String name) {
-		if (name != null) {
-			for (Difficulty d : values()) {
-				if (d.name().equalsIgnoreCase(name.trim())) {
-					return d;
-				}
+		if (name == null) {
+			return STANDARD;
+		}
+		String trimmed = name.trim();
+		for (Difficulty d : values()) {
+			if (d.name().equalsIgnoreCase(trimmed)) {
+				return d;
 			}
 		}
-		return STANDARD;
+		// Migrate configs written before the five-tier system, so an existing
+		// task.difficulty=HARD doesn't silently drop back to Standard.
+		return switch (trimmed.toUpperCase(Locale.ROOT)) {
+			case "EASY" -> BEGINNER;
+			case "HARD" -> EXPERT;
+			default -> STANDARD;
+		};
 	}
 
 	public String lower() {

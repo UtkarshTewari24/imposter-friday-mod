@@ -13,7 +13,7 @@ public enum Ability {
 	SWAP("swap", false),
 	BLIND("blind", true),
 	GRAVITY("gravity", true),
-	INVIS("invis", true);
+	HUNT("hunt", true);
 
 	private final String id;
 	private final boolean hasDuration;

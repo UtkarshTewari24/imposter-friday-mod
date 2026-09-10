@@ -20,6 +20,7 @@ public class ImpostorFridaysClient implements ClientModInitializer {
 
 	@Override
 	public void onInitializeClient() {
+		AbilityKeybinds.register();
 		GameHud.register();
 		RoleAnnouncementHud.register();
 		SniffCueHud.register();
@@ -36,7 +37,8 @@ public class ImpostorFridaysClient implements ClientModInitializer {
 
 		ClientPlayNetworking.registerGlobalReceiver(OpenPickerS2C.ID, (payload, context) ->
 				context.client().execute(() -> context.client().setScreen(
-						new PlayerPickerScreen(PickerMode.byOrdinal(payload.mode()), payload.entries()))));
+						new PlayerPickerScreen(PickerMode.byOrdinal(payload.mode()),
+								payload.entries(), payload.allowNearest()))));
 
 		// Never let stale overlays survive a disconnect.
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> ClientGameState.reset());

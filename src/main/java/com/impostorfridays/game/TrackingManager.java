@@ -61,8 +61,10 @@ public final class TrackingManager {
 			player.sendMessage(Text.literal("No game is running.").formatted(Formatting.RED), true);
 			return;
 		}
+		GameState state = GameManager.getState();
+		boolean impostor = state != null && state.isImpostor(player.getUuid());
 		ServerPlayNetworking.send(player,
-				new OpenPickerS2C(PickerMode.TRACK.ordinal(), candidatesFor(player)));
+				new OpenPickerS2C(PickerMode.TRACK.ordinal(), candidatesFor(player), impostor));
 	}
 
 	/** Everyone except the requester. */
@@ -76,14 +78,42 @@ public final class TrackingManager {
 		return entries;
 	}
 
+	/**
+	 * Advances to the next player in the list, the way Manhunt's tracker cycles.
+	 *
+	 * <p>Bound to the drop key, so the compass can never be thrown away by accident.
+	 */
+	public static void cycleTarget(ServerPlayerEntity tracker) {
+		if (!GameManager.isActive()) {
+			return;
+		}
+		List<OpenPickerS2C.Entry> candidates = candidatesFor(tracker);
+		if (candidates.isEmpty()) {
+			tracker.sendMessage(Text.literal("Nobody else to track.").formatted(Formatting.GRAY), true);
+			return;
+		}
+
+		UUID current = targets.get(tracker.getUuid());
+		int next = 0;
+		if (current != null) {
+			for (int i = 0; i < candidates.size(); i++) {
+				if (candidates.get(i).id().equals(current)) {
+					next = (i + 1) % candidates.size();
+					break;
+				}
+			}
+		}
+		setTarget(tracker, candidates.get(next).id(), false);
+	}
+
 	/** Applies a validated selection. */
 	public static void setTarget(ServerPlayerEntity tracker, UUID target, boolean nearest) {
 		if (nearest) {
 			nearestMode.put(tracker.getUuid(), true);
 			targets.remove(tracker.getUuid());
-			tracker.sendMessage(Text.literal("Now tracking: ")
+			tracker.sendMessage(Text.literal("Tracking: ")
 					.formatted(Formatting.GRAY)
-					.append(Text.literal("Nearest Player").formatted(Formatting.AQUA)), true);
+					.append(Text.literal("Nearest Player").formatted(Formatting.AQUA)), false);
 			return;
 		}
 		nearestMode.remove(tracker.getUuid());
@@ -91,9 +121,9 @@ public final class TrackingManager {
 
 		ServerPlayerEntity targetPlayer = tracker.getEntityWorld().getServer().getPlayerManager().getPlayer(target);
 		String name = targetPlayer != null ? targetPlayer.getGameProfile().name() : "Unknown";
-		tracker.sendMessage(Text.literal("Now tracking: ")
+		tracker.sendMessage(Text.literal("Tracking: ")
 				.formatted(Formatting.GRAY)
-				.append(Text.literal(name).formatted(Formatting.AQUA)), true);
+				.append(Text.literal(name).formatted(Formatting.AQUA)), false);
 	}
 
 	// ------------------------------------------------------------------
@@ -215,8 +245,9 @@ public final class TrackingManager {
 	 * not the Impostor that round, it both leaks and confuses. Checked on every join.
 	 */
 	public static void stripCompassUnlessImpostor(ServerPlayerEntity player) {
-		GameState state = GameManager.getState();
-		if (state != null && state.isImpostor(player.getUuid())) {
+		// During a match everyone is supposed to have one; only strip them between matches.
+		if (GameManager.isActive()) {
+			giveCompass(player);
 			return;
 		}
 		var inventory = player.getInventory();

@@ -35,18 +35,26 @@ public final class ResetCommand {
 
 	public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
 		dispatcher.register(CommandManager.literal("amongusreset")
-				.requires(Permissions::isAuthorized)
 				.executes(ctx -> {
+					if (!Permissions.checkAuthorized(ctx.getSource())) {
+						return 0;
+					}
 					warn(ctx.getSource());
 					return 1;
 				})
 				.then(CommandManager.literal("confirm")
 						.executes(ctx -> {
+							if (!Permissions.checkAuthorized(ctx.getSource())) {
+								return 0;
+							}
 							confirm(ctx.getSource());
 							return 1;
 						}))
 				.then(CommandManager.literal("world")
 						.executes(ctx -> {
+							if (!Permissions.checkAuthorized(ctx.getSource())) {
+								return 0;
+							}
 							showWorldResetInstructions(ctx.getSource());
 							return 1;
 						})));

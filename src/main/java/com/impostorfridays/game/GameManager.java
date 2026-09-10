@@ -77,11 +77,13 @@ public final class GameManager {
 		state = new GameState(cfg.getGameLengthTicks());
 		syncCounter = 0;
 		taskLines = List.of();
+		lastWinnerWasInnocents = false;
 
 		// Deaths must never cost anyone their gear.
 		enforceKeepInventory(server);
 		// Clear any nametag hiding left over from a previous match or an unclean shutdown.
 		NametagHider.reset(server);
+		EndGameReveal.clear(server);
 		resetAdvancementsIfConfigured(server, cfg);
 
 		assignRoles(players, cfg);
@@ -92,9 +94,8 @@ public final class GameManager {
 		// Announce each player's own role, and nobody else's.
 		for (ServerPlayerEntity p : players) {
 			Role role = state.getRole(p.getUuid());
-			if (role == Role.IMPOSTOR) {
-				TrackingManager.giveCompass(p);
-			}
+			// Everyone carries a Tracking Compass, not just the Impostor.
+			TrackingManager.giveCompass(p);
 			ServerPlayNetworking.send(p, new RoleAnnounceS2C(role.ordinal()));
 			syncTo(p);
 		}
@@ -147,6 +148,11 @@ public final class GameManager {
 		if (!isActive()) {
 			return;
 		}
+		// Reveal the Impostor and gather everyone at spawn before tearing state down, while
+		// we still know who they were.
+		UUID impostorId = state.getImpostorId();
+		EndGameReveal.run(server, impostorId, lastWinnerWasInnocents);
+
 		// Undo anything that would otherwise outlive the match.
 		AbilityManager.cleanupAll(server);
 		for (ServerPlayerEntity p : server.getPlayerManager().getPlayerList()) {
@@ -235,7 +241,8 @@ public final class GameManager {
 				state.getRole(id).ordinal(),
 				impostor ? state.getImpostorCooldownTicks() : 0,
 				sniffer ? state.getSnifferCooldownTicks() : 0,
-				!impostor && state.isEffectActive(Ability.GRAVITY),
+				// Gravity hits everyone, Impostor included — but never anyone in a boat.
+				state.isEffectActive(Ability.GRAVITY) && !AbilityManager.isInBoat(player),
 				state.getRespawnTicks(id),
 				taskLines
 		));

@@ -4,7 +4,7 @@ package com.impostorfridays.game;
 public enum Role {
 	INNOCENT("Innocent", 0x55FF55),
 	IMPOSTOR("Impostor", 0xFF5555),
-	SNIFFER("Sniffer", 0x55FFFF);
+	SNIFFER("Sniffer", 0xFFFF55);
 
 	private final String displayName;
 	private final int color;

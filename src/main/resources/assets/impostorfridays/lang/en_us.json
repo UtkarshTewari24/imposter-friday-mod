@@ -2,5 +2,11 @@
   "item.impostorfridays.tracking_compass": "Tracking Compass",
   "impostorfridays.picker.track.title": "Track a Player",
   "impostorfridays.picker.sniff.title": "Sniff a Player",
-  "impostorfridays.picker.nearest": "Nearest Player"
+  "impostorfridays.picker.nearest": "Nearest Player",
+  "key.categories.impostorfridays.abilities": "Impostor Fridays",
+  "key.impostorfridays.hunt": "Hunt (invisible + strength + speed)",
+  "key.impostorfridays.blind": "Blind all Innocents",
+  "key.impostorfridays.gravity": "Reverse gravity",
+  "key.impostorfridays.steal": "Steal from a player",
+  "impostorfridays.picker.steal.title": "Steal From a Player"
 }

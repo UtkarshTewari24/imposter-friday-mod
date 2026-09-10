@@ -16,7 +16,12 @@ import java.util.UUID;
  * <p>The server sends the candidate list so the client never has to derive who is
  * selectable. Used by both the Tracking Compass and {@code /sniff}.
  */
-public record OpenPickerS2C(int mode, List<Entry> entries) implements CustomPayload {
+public record OpenPickerS2C(int mode, List<Entry> entries, boolean allowNearest)
+		implements CustomPayload {
+
+	public OpenPickerS2C(int mode, List<Entry> entries) {
+		this(mode, entries, false);
+	}
 
 	/** One selectable player. */
 	public record Entry(UUID id, String name) {
@@ -30,6 +35,7 @@ public record OpenPickerS2C(int mode, List<Entry> entries) implements CustomPayl
 
 	private void write(RegistryByteBuf buf) {
 		buf.writeVarInt(mode);
+		buf.writeBoolean(allowNearest);
 		buf.writeVarInt(entries.size());
 		for (Entry e : entries) {
 			buf.writeUuid(e.id());
@@ -39,6 +45,7 @@ public record OpenPickerS2C(int mode, List<Entry> entries) implements CustomPayl
 
 	private static OpenPickerS2C read(RegistryByteBuf buf) {
 		int mode = buf.readVarInt();
+		boolean allowNearest = buf.readBoolean();
 		int count = buf.readVarInt();
 		List<Entry> list = new ArrayList<>(count);
 		for (int i = 0; i < count; i++) {
@@ -46,7 +53,7 @@ public record OpenPickerS2C(int mode, List<Entry> entries) implements CustomPayl
 			String name = buf.readString();
 			list.add(new Entry(id, name));
 		}
-		return new OpenPickerS2C(mode, list);
+		return new OpenPickerS2C(mode, list, allowNearest);
 	}
 
 	@Override

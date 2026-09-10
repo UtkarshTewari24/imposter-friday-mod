@@ -63,6 +63,32 @@ public final class Permissions {
 		return isAdminName(player.getGameProfile().name()) || hasOpLevel(source);
 	}
 
+	/**
+	 * Checks authorisation and explains the refusal.
+	 *
+	 * <p>Deliberately used INSTEAD of Brigadier's {@code .requires(...)} for admin commands.
+	 * {@code requires} hides the command entirely from anyone unauthorised, so a server owner
+	 * who simply hasn't been OP'd sees "Unknown command" and has no idea why — which reads like
+	 * the mod is broken rather than like a permission problem.
+	 *
+	 * @return true if the source may proceed
+	 */
+	public static boolean checkAuthorized(ServerCommandSource source) {
+		if (isAuthorized(source)) {
+			return true;
+		}
+		source.sendError(net.minecraft.text.Text.literal(
+				"You need to be a server operator to use this. Run 'op "
+						+ nameOf(source) + "' from the server console.")
+				.formatted(net.minecraft.util.Formatting.RED));
+		return false;
+	}
+
+	private static String nameOf(ServerCommandSource source) {
+		ServerPlayerEntity player = source.getPlayer();
+		return player != null ? player.getGameProfile().name() : "<yourname>";
+	}
+
 	private static boolean hasOpLevel(ServerCommandSource source) {
 		return source.getPermissions().hasPermission(OP_LEVEL);
 	}

@@ -24,9 +24,11 @@ public final class ModCommands {
 
 	private static void registerLifecycle(CommandDispatcher<ServerCommandSource> dispatcher) {
 		dispatcher.register(CommandManager.literal("start")
-				.requires(Permissions::isAuthorized)
 				.executes(ctx -> {
 					ServerCommandSource source = ctx.getSource();
+					if (!Permissions.checkAuthorized(source)) {
+						return 0;
+					}
 					Text error = GameManager.start(source.getServer());
 					if (error != null) {
 						source.sendError(error);
@@ -36,9 +38,11 @@ public final class ModCommands {
 				}));
 
 		dispatcher.register(CommandManager.literal("end")
-				.requires(Permissions::isAuthorized)
 				.executes(ctx -> {
 					ServerCommandSource source = ctx.getSource();
+					if (!Permissions.checkAuthorized(source)) {
+						return 0;
+					}
 					if (!GameManager.isActive()) {
 						source.sendFeedback(() -> Text.literal("No game is running.")
 								.formatted(Formatting.YELLOW), false);
